@@ -6,14 +6,18 @@ import { navigateTo, getCurrentRoute } from '../router.js';
 import { getDueWords } from '../data/srs.js';
 
 const NAV_ITEMS = [
-  { label: 'LEARN', items: [
+  { label: 'HOME', items: [
     { icon: '🏠', text: 'Dashboard', route: '/dashboard' },
+  ]},
+  { label: 'STUDY', items: [
     { icon: '📚', text: 'My Decks', route: '/decks' },
-    { icon: '➕', text: 'Add Word', route: '/add-word' },
+    { icon: '📖', text: 'Quick Review', route: '/search' },
     { icon: '✨', text: 'AI Flashcard', route: '/ai-flashcard' },
   ]},
-  { label: 'REVIEW', items: [
-    { icon: '🔍', text: 'Search & Review', route: '/search' },
+  { label: 'MANAGE', items: [
+    { icon: '➕', text: 'Add Word', route: '/add-word' },
+  ]},
+  { label: 'INSIGHTS', items: [
     { icon: '📊', text: 'Statistics', route: '/stats' },
   ]},
 ];
