@@ -57,21 +57,22 @@ export function renderStudy(container, params) {
 
   const renderModeSelect = () => {
     container.innerHTML = `
-      <div class="animate-fade-in-up study-container" style="margin-top:var(--space-8);">
-        <button class="btn btn-ghost" id="study-back-btn" style="margin-bottom:var(--space-4);">← Back</button>
-        <div class="page-header" style="text-align:center;">
-          <h1>📖 Study Session</h1>
-          <p>${cards.length} cards to study</p>
+      <div class="animate-fade-in-up study-container" style="margin-top:var(--space-4);">
+        <button class="btn btn-ghost btn-sm" id="study-back-btn" style="margin-bottom:var(--space-6);">← Back</button>
+        <div style="text-align:center;margin-bottom:var(--space-8);">
+          <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;margin-bottom:var(--space-2);">Choose Study Mode</h1>
+          <p style="color:#6b7280;font-size:var(--font-size-base);">You have ${cards.length} card${cards.length !== 1 ? 's' : ''} ready to study</p>
         </div>
-        <div class="flex flex-col gap-4" style="margin-top:var(--space-8);">
+        <div class="flex flex-col gap-3" style="max-width:600px;margin:0 auto;">
           ${MODES.map(m => `
-            <div class="card card-interactive mode-option" data-mode="${m.id}" style="padding:var(--space-5) var(--space-6);cursor:pointer;">
+            <div class="card card-interactive mode-option" data-mode="${m.id}" style="padding:var(--space-6);cursor:pointer;border-left:4px solid #3B82F6;transition:all 0.2s ease;">
               <div class="flex items-center gap-4">
-                <span style="font-size:1.5rem;">${m.label.split(' ')[0]}</span>
-                <div>
-                  <div class="font-semibold">${m.label}</div>
-                  <div class="text-sm text-muted">${m.desc}</div>
+                <div style="font-size:2rem;min-width:50px;display:flex;align-items:center;justify-content:center;">${m.label.split(' ')[0]}</div>
+                <div style="flex:1;text-align:left;">
+                  <div style="font-size:var(--font-size-base);font-weight:600;color:#1f2937;margin-bottom:var(--space-1);">${m.label}</div>
+                  <div style="font-size:var(--font-size-sm);color:#6b7280;">${m.desc}</div>
                 </div>
+                <div style="color:#3B82F6;font-size:1.5rem;">→</div>
               </div>
             </div>
           `).join('')}
@@ -161,30 +162,26 @@ export function renderStudy(container, params) {
 
     container.innerHTML = `
       <div class="animate-fade-in study-container">
-        <div class="flex items-center justify-between" style="margin-bottom:var(--space-4);">
-          <button class="btn btn-ghost btn-sm" id="exit-study">✕ Exit</button>
-          <div class="flex items-center gap-3">
-            <button class="btn btn-ghost btn-sm" id="prev-card-btn" style="padding:4px 8px;" ${currentIndex === 0 ? 'disabled' : ''}>← Trước</button>
-            <span class="text-sm font-bold text-muted">${currentIndex + 1} / ${cards.length}</span>
-            <button class="btn btn-ghost btn-sm" id="next-card-btn" style="padding:4px 8px;" ${currentIndex === cards.length - 1 ? 'disabled' : ''}>Sau →</button>
+        <div class="flex items-center justify-between" style="margin-bottom:var(--space-6);">
+          <button class="btn btn-ghost btn-sm" id="exit-study" style="color:#ef4444;">Exit Study</button>
+          <div style="text-align:center;">
+            <div style="font-size:var(--font-size-sm);color:#6b7280;margin-bottom:var(--space-1);">Card <span style="font-weight:600;color:#1f2937;">${currentIndex + 1}</span> of <span style="font-weight:600;color:#1f2937;">${cards.length}</span></div>
+            <div class="progress-bar" style="height:4px;width:200px;">
+              <div class="progress-bar-fill" style="width:${progressPct}%;background:linear-gradient(90deg, #3B82F6 0%, #06b6d4 100%);"></div>
+            </div>
           </div>
-          <span class="badge badge-outline">${MODES.find(m => m.id === mode).label}</span>
-        </div>
-
-        <!-- Progress -->
-        <div class="progress-bar" style="margin-bottom:var(--space-6);">
-          <div class="progress-bar-fill" style="width:${progressPct}%"></div>
+          <span style="background:#dbeafe;color:#1e40af;padding:var(--space-2) var(--space-3);border-radius:var(--border-radius);font-size:var(--font-size-xs);font-weight:600;">${MODES.find(m => m.id === mode).label}</span>
         </div>
 
         <!-- Flashcard -->
-        <div class="flex items-center justify-center gap-4 w-full">
-          <button class="btn btn-ghost btn-circle" id="side-prev-btn" style="font-size:24px; min-width:50px; min-height:50px; padding:0; display:flex; align-items:center; justify-content:center;" ${currentIndex === 0 ? 'disabled' : ''}>❮</button>
+        <div class="flex items-center justify-center gap-6 w-full">
+          <button class="btn btn-secondary btn-sm" id="side-prev-btn" style="font-size:18px; width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px;" ${currentIndex === 0 ? 'disabled' : ''}>←</button>
           
-          <div class="flashcard-wrapper" style="flex:1; max-width:600px;">
-            <div class="flashcard" id="flashcard">
+          <div class="flashcard-wrapper" style="flex:1; max-width:640px;">
+            <div class="flashcard" id="flashcard" style="cursor:pointer;user-select:none;">
               <div class="flashcard-face flashcard-front">
                 ${frontContent}
-                <div class="flashcard-hint">${hint}</div>
+                <div class="flashcard-hint" style="margin-top:auto;">${hint}</div>
               </div>
               <div class="flashcard-face flashcard-back">
                 ${backContent}
@@ -192,7 +189,7 @@ export function renderStudy(container, params) {
             </div>
           </div>
           
-          <button class="btn btn-ghost btn-circle" id="side-next-btn" style="font-size:24px; min-width:50px; min-height:50px; padding:0; display:flex; align-items:center; justify-content:center;" ${currentIndex === cards.length - 1 ? 'disabled' : ''}>❯</button>
+          <button class="btn btn-secondary btn-sm" id="side-next-btn" style="font-size:18px; width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px;" ${currentIndex === cards.length - 1 ? 'disabled' : ''}>→</button>
         </div>
 
         <!-- Rating buttons (hidden until flipped) -->
@@ -306,23 +303,23 @@ export function renderStudy(container, params) {
     recordStudySession(sessionNew, sessionReview);
 
     const ratingLabels = ['Again', 'Hard', 'Good', 'Easy'];
-    const ratingColors = ['var(--color-red)', 'var(--color-yellow)', 'var(--color-green)', 'var(--color-blue)'];
+    const ratingColors = ['#ef4444', '#f59e0b', '#10b981', '#3B82F6'];
 
     container.innerHTML = `
       <div class="animate-fade-in-up study-container">
-        <div class="card session-summary" style="margin-top:var(--space-16);">
-          <div class="summary-icon">🎉</div>
-          <h1 style="font-size:var(--font-size-2xl);margin-bottom:var(--space-2);">Session Complete!</h1>
-          <p class="text-muted" style="margin-bottom:var(--space-8);">You reviewed ${sessionNew + sessionReview} cards</p>
+        <div class="card" style="margin-top:var(--space-12);padding:var(--space-8);text-align:center;">
+          <div style="font-size:3rem;margin-bottom:var(--space-4);">🎉</div>
+          <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;margin-bottom:var(--space-2);">Session Complete!</h1>
+          <p style="color:#6b7280;margin-bottom:var(--space-8);">Great job! You reviewed <strong style="color:#3B82F6;">${sessionNew + sessionReview}</strong> card${sessionNew + sessionReview !== 1 ? 's' : ''}</p>
 
-          <div class="grid grid-2" style="max-width:300px;margin:0 auto var(--space-8);">
-            <div class="stat-card">
-              <div class="stat-value">${sessionNew}</div>
-              <div class="stat-label">New</div>
+          <div class="grid grid-2" style="max-width:320px;margin:0 auto var(--space-8);gap:var(--space-4);">
+            <div style="padding:var(--space-6);background:#f0f9ff;border-radius:var(--border-radius);border-left:4px solid #3B82F6;">
+              <div style="font-size:var(--font-size-2xl);font-weight:700;color:#3B82F6;margin-bottom:var(--space-2);">${sessionNew}</div>
+              <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">New Cards</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-value">${sessionReview}</div>
-              <div class="stat-label">Reviewed</div>
+            <div style="padding:var(--space-6);background:#f9fafb;border-radius:var(--border-radius);border-left:4px solid #8b5cf6;">
+              <div style="font-size:var(--font-size-2xl);font-weight:700;color:#8b5cf6;margin-bottom:var(--space-2);">${sessionReview}</div>
+              <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">Reviewed</div>
             </div>
           </div>
 

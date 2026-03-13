@@ -23,15 +23,15 @@ export function renderAddWord(container) {
 
   container.innerHTML = `
     <div class="animate-fade-in-up" style="max-width:720px;">
-      <button class="btn btn-ghost" id="back-btn" style="margin-bottom:var(--space-4);">← Back</button>
+      <button class="btn btn-ghost btn-sm" id="back-btn" style="margin-bottom:var(--space-6);">← Back</button>
 
-      <div class="page-header">
-        <h1>${isEdit ? '✏️ Edit Word' : '➕ Add New Word'}</h1>
-        <p>${isEdit ? 'Update the word details below.' : 'Enter a new vocabulary word with all its details.'}</p>
+      <div style="margin-bottom:var(--space-8);">
+        <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;margin-bottom:var(--space-2);">${isEdit ? 'Edit Word' : 'Add New Word'}</h1>
+        <p style="color:#6b7280;font-size:var(--font-size-base);">${isEdit ? 'Update the word details and save your changes.' : 'Enter a new vocabulary word with meaning, example, and related words.'}</p>
       </div>
 
       <div class="card" style="padding:var(--space-8);">
-        <form id="word-form" class="flex flex-col gap-6">
+        <form id="word-form" class="flex flex-col gap-5">
           <!-- Word + Auto-lookup -->
           <div class="flex gap-4 items-end">
             <div class="input-group" style="flex:1;">
@@ -119,11 +119,11 @@ export function renderAddWord(container) {
           </div>
 
           <!-- Submit -->
-          <div class="flex gap-3" style="margin-top:var(--space-2);">
-            <button type="submit" class="btn btn-primary btn-lg" style="flex:1;">
-              ${isEdit ? '💾 Update Word' : '➕ Add Word'}
+          <div class="flex gap-3" style="margin-top:var(--space-4);">
+            <button type="submit" class="btn btn-primary" style="flex:1;padding:var(--space-4);">
+              ${isEdit ? 'Update Word' : 'Add Word'}
             </button>
-            ${!isEdit ? '<button type="button" class="btn btn-secondary btn-lg" id="add-another-btn" style="flex:1;">Add & New</button>' : ''}
+            ${!isEdit ? '<button type="button" class="btn btn-secondary" id="add-another-btn" style="flex:1;padding:var(--space-4);">Add & New</button>' : ''}
           </div>
         </form>
       </div>

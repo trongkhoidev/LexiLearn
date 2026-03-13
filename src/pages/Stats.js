@@ -31,29 +31,29 @@ export function renderStats(container) {
 
   container.innerHTML = `
     <div class="animate-fade-in-up">
-      <div class="page-header">
-        <h1>📊 Learning Statistics</h1>
-        <p>Track your progress and stay motivated</p>
+      <div style="margin-bottom:var(--space-8);">
+        <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;margin-bottom:var(--space-2);">Learning Statistics</h1>
+        <p style="color:#6b7280;font-size:var(--font-size-base);">Track your progress and stay motivated on your learning journey</p>
       </div>
 
       <!-- Today + Streak -->
       <div class="grid grid-4 stagger" style="margin-bottom:var(--space-8);">
-        <div class="card stat-card animate-fade-in-up">
-          <div class="stat-value">${todayStats.studied}</div>
-          <div class="stat-label">Studied Today</div>
+        <div class="card animate-fade-in-up" style="text-align:center;padding:var(--space-6);border-left:4px solid #3B82F6;">
+          <div style="font-size:var(--font-size-3xl);font-weight:700;color:#3B82F6;margin-bottom:var(--space-2);">${todayStats.studied}</div>
+          <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">Studied Today</div>
         </div>
-        <div class="card stat-card animate-fade-in-up">
-          <div class="stat-value">${todayStats.newWords}</div>
-          <div class="stat-label">New Words Today</div>
+        <div class="card animate-fade-in-up" style="text-align:center;padding:var(--space-6);border-left:4px solid #f59e0b;">
+          <div style="font-size:var(--font-size-3xl);font-weight:700;color:#f59e0b;margin-bottom:var(--space-2);">${todayStats.newWords}</div>
+          <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">New Words</div>
         </div>
-        <div class="card stat-card animate-fade-in-up">
-          <div class="stat-value">${todayStats.reviewed}</div>
-          <div class="stat-label">Reviewed Today</div>
+        <div class="card animate-fade-in-up" style="text-align:center;padding:var(--space-6);border-left:4px solid #8b5cf6;">
+          <div style="font-size:var(--font-size-3xl);font-weight:700;color:#8b5cf6;margin-bottom:var(--space-2);">${todayStats.reviewed}</div>
+          <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">Reviewed</div>
         </div>
-        <div class="card stat-card animate-fade-in-up" style="position:relative;">
-          <div style="font-size:1.5rem;animation:fireGlow 2s infinite;margin-bottom:var(--space-1);">🔥</div>
-          <div class="stat-value">${stats.streak || 0}</div>
-          <div class="stat-label">Day Streak</div>
+        <div class="card animate-fade-in-up" style="text-align:center;padding:var(--space-6);border-left:4px solid #ef4444;position:relative;">
+          <div style="font-size:1.8rem;margin-bottom:var(--space-1);">🔥</div>
+          <div style="font-size:var(--font-size-3xl);font-weight:700;color:#ef4444;margin-bottom:var(--space-2);">${stats.streak || 0}</div>
+          <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">Day Streak</div>
         </div>
       </div>
 
@@ -61,13 +61,13 @@ export function renderStats(container) {
       <div class="grid grid-2" style="margin-bottom:var(--space-8);">
         <!-- Weekly Activity -->
         <div class="card animate-fade-in-up">
-          <h3 style="margin-bottom:var(--space-5);font-weight:var(--font-weight-semibold);">📈 Weekly Activity</h3>
+          <h3 style="margin-bottom:var(--space-5);font-weight:600;color:#1f2937;font-size:var(--font-size-lg);">Weekly Activity</h3>
           <canvas id="weekly-chart" style="width:100%;height:200px;"></canvas>
         </div>
 
         <!-- Mastery Distribution -->
         <div class="card animate-fade-in-up">
-          <h3 style="margin-bottom:var(--space-5);font-weight:var(--font-weight-semibold);">🎯 Mastery Distribution</h3>
+          <h3 style="margin-bottom:var(--space-5);font-weight:600;color:#1f2937;font-size:var(--font-size-lg);">Mastery Distribution</h3>
           <div class="flex items-center gap-6">
             <canvas id="mastery-chart" style="width:160px;height:160px;flex-shrink:0;"></canvas>
             <div class="flex flex-col gap-3" style="flex:1;">
@@ -90,7 +90,7 @@ export function renderStats(container) {
 
       <!-- 90-Day Heatmap -->
       <div class="card animate-fade-in-up" style="margin-bottom:var(--space-8);">
-        <h3 style="margin-bottom:var(--space-5);font-weight:var(--font-weight-semibold);">🗓️ 90-Day Activity</h3>
+        <h3 style="margin-bottom:var(--space-5);font-weight:600;color:#1f2937;font-size:var(--font-size-lg);">90-Day Activity</h3>
         <div id="heatmap" style="display:flex;flex-wrap:wrap;gap:3px;"></div>
         <div class="flex items-center justify-between text-sm text-muted" style="margin-top:var(--space-3);">
           <span>Less</span>
@@ -105,19 +105,19 @@ export function renderStats(container) {
 
       <!-- All-time Stats -->
       <div class="card animate-fade-in-up">
-        <h3 style="margin-bottom:var(--space-5);font-weight:var(--font-weight-semibold);">📋 All-Time Summary</h3>
+        <h3 style="margin-bottom:var(--space-5);font-weight:600;color:#1f2937;font-size:var(--font-size-lg);">All-Time Summary</h3>
         <div class="grid grid-3">
-          <div class="stat-card">
-            <div class="stat-value">${words.length}</div>
-            <div class="stat-label">Total Words</div>
+          <div style="text-align:center;padding:var(--space-6);border-left:4px solid #3B82F6;">
+            <div style="font-size:var(--font-size-3xl);font-weight:700;color:#3B82F6;margin-bottom:var(--space-2);">${words.length}</div>
+            <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">Total Words</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-value">${stats.totalWordsStudied || 0}</div>
-            <div class="stat-label">Total Reviews</div>
+          <div style="text-align:center;padding:var(--space-6);border-left:4px solid #8b5cf6;">
+            <div style="font-size:var(--font-size-3xl);font-weight:700;color:#8b5cf6;margin-bottom:var(--space-2);">${stats.totalWordsStudied || 0}</div>
+            <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">Total Reviews</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-value">${Object.keys(stats.dailySessions || {}).length}</div>
-            <div class="stat-label">Days Active</div>
+          <div style="text-align:center;padding:var(--space-6);border-left:4px solid #10b981;">
+            <div style="font-size:var(--font-size-3xl);font-weight:700;color:#10b981;margin-bottom:var(--space-2);">${Object.keys(stats.dailySessions || {}).length}</div>
+            <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">Days Active</div>
           </div>
         </div>
       </div>

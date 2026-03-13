@@ -16,20 +16,20 @@ export function renderDeckList(container) {
 
     container.innerHTML = `
       <div class="animate-fade-in-up">
-        <div class="page-header flex items-center justify-between">
+        <div class="flex items-center justify-between" style="margin-bottom:var(--space-8);">
           <div>
-            <h1>📚 My Decks</h1>
-            <p>${decks.length} deck${decks.length !== 1 ? 's' : ''} — organize your vocabulary by topic</p>
+            <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;margin-bottom:var(--space-2);">My Decks</h1>
+            <p style="color:#6b7280;font-size:var(--font-size-base);">Manage ${decks.length} deck${decks.length !== 1 ? 's' : ''} — organize vocabulary by topic</p>
           </div>
-          <button class="btn btn-primary" id="create-deck-btn">➕ New Deck</button>
+          <button class="btn btn-primary" id="create-deck-btn">Create Deck</button>
         </div>
 
         ${decks.length === 0 ? `
-          <div class="empty-state card" style="margin-top:var(--space-8);">
-            <div class="empty-state-icon">📂</div>
-            <div class="empty-state-title">No decks yet</div>
-            <div class="empty-state-text">Create your first deck to start organizing vocabulary by topic — IELTS, Business, Academic, and more.</div>
-            <button class="btn btn-primary" id="empty-create-btn">📚 Create First Deck</button>
+          <div class="card" style="text-align:center;padding:var(--space-12) var(--space-8);border:2px dashed #e5e7eb;">
+            <div style="font-size:2.5rem;margin-bottom:var(--space-4);">📂</div>
+            <h2 style="font-size:var(--font-size-lg);font-weight:600;color:#1f2937;margin-bottom:var(--space-2);">No decks yet</h2>
+            <p style="color:#6b7280;margin-bottom:var(--space-6);max-width:450px;margin-left:auto;margin-right:auto;">Start by creating your first deck. Organize vocabulary by topics like IELTS, Business, Academic, or any subject you're learning.</p>
+            <button class="btn btn-primary" id="empty-create-btn">Create First Deck</button>
           </div>
         ` : `
           <div class="grid grid-3 stagger">
@@ -40,26 +40,29 @@ export function renderDeckList(container) {
               const mastered = deckWords.filter(w => w.srsLevel >= 5).length;
               const progress = percent(mastered, totalWords);
               return `
-                <div class="card card-interactive animate-fade-in-up" data-deck-id="${deck.id}" style="cursor:pointer;">
-                  <div class="flex items-center justify-between" style="margin-bottom:var(--space-3);">
-                    <h3 style="font-size:var(--font-size-md);font-weight:var(--font-weight-semibold);">${deck.name}</h3>
+                <div class="card card-interactive animate-fade-in-up" data-deck-id="${deck.id}" style="cursor:pointer;display:flex;flex-direction:column;">
+                  <div class="flex items-center justify-between" style="margin-bottom:var(--space-4);">
+                    <div>
+                      <h3 style="font-size:var(--font-size-md);font-weight:600;color:#1f2937;margin-bottom:var(--space-1);">${deck.name}</h3>
+                      <p style="font-size:var(--font-size-xs);color:#9ca3af;font-weight:500;">${deckDue} due</p>
+                    </div>
                     <div class="flex gap-2">
-                      <button class="btn btn-ghost btn-sm edit-deck-btn" data-id="${deck.id}" title="Edit">✏️</button>
-                      <button class="btn btn-ghost btn-sm delete-deck-btn" data-id="${deck.id}" title="Delete">🗑️</button>
+                      <button class="btn btn-ghost btn-sm edit-deck-btn" data-id="${deck.id}" title="Edit" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center;">✏️</button>
+                      <button class="btn btn-ghost btn-sm delete-deck-btn" data-id="${deck.id}" title="Delete" style="width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center;">🗑️</button>
                     </div>
                   </div>
-                  <p class="text-sm text-muted" style="margin-bottom:var(--space-4);min-height:36px;">${deck.description || 'No description'}</p>
-                  <div class="flex gap-4 text-sm" style="margin-bottom:var(--space-4);">
-                    <div><strong>${totalWords}</strong> <span class="text-muted">words</span></div>
-                    <div><strong class="text-accent">${deckDue}</strong> <span class="text-muted">due</span></div>
-                    <div><strong style="color:var(--color-green)">${mastered}</strong> <span class="text-muted">mastered</span></div>
-                  </div>
-                  <div class="flex items-center justify-between text-sm" style="margin-bottom:var(--space-2);">
-                    <span class="text-muted">Progress</span>
-                    <span class="font-semibold">${progress}%</span>
-                  </div>
-                  <div class="progress-bar">
-                    <div class="progress-bar-fill" style="width:${progress}%"></div>
+                  <p style="font-size:var(--font-size-sm);color:#6b7280;margin-bottom:var(--space-4);flex:1;line-height:1.5;min-height:40px;">${deck.description || 'No description provided'}</p>
+                  <div style="border-top:1px solid #e5e7eb;padding-top:var(--space-4);">
+                    <div class="flex items-center justify-between text-sm" style="margin-bottom:var(--space-3);">
+                      <div style="display:flex;gap:var(--space-4);">
+                        <div><span style="color:#6b7280;font-size:var(--font-size-xs);font-weight:500;">Words:</span> <strong style="color:#1f2937;">${totalWords}</strong></div>
+                        <div><span style="color:#6b7280;font-size:var(--font-size-xs);font-weight:500;">Mastered:</span> <strong style="color:#10b981;">${mastered}</strong></div>
+                      </div>
+                      <span style="color:#3B82F6;font-weight:600;font-size:var(--font-size-sm);">${progress}%</span>
+                    </div>
+                    <div class="progress-bar" style="height:4px;">
+                      <div class="progress-bar-fill" style="width:${progress}%;background:linear-gradient(90deg, #3B82F6 0%, #06b6d4 100%);"></div>
+                    </div>
                   </div>
                 </div>
               `;
