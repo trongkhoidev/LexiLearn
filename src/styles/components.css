@@ -20,6 +20,26 @@
     line-height: 1;
     position: relative;
     overflow: hidden;
+    user-select: none;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width var(--transition-fast), height var(--transition-fast);
+    pointer-events: none;
+}
+
+.btn:active::before {
+    width: 100px;
+    height: 100px;
 }
 
 .btn::after {
@@ -35,7 +55,13 @@
 }
 
 .btn:active {
-    transform: scale(0.97);
+    transform: scale(0.96);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 .btn-primary {
@@ -46,18 +72,24 @@
 
 .btn-primary:hover {
     box-shadow: var(--shadow-glow);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
 }
 
 .btn-secondary {
     background: #f3f4f6;
     color: var(--color-text-primary);
-    border: 1px solid var(--color-border);
+    border: 2px solid var(--color-border);
+    transition: all var(--transition-fast);
 }
 
 .btn-secondary:hover {
-    border-color: var(--color-border-hover);
-    background: #e5e7eb;
+    border-color: var(--color-accent);
+    background: white;
+    color: var(--color-accent);
 }
 
 .btn-ghost {
@@ -67,17 +99,29 @@
 
 .btn-ghost:hover {
     color: var(--color-text-primary);
-    background: var(--color-bg-glass);
+    background: rgba(59, 130, 246, 0.08);
 }
 
 .btn-success {
     background: var(--gradient-success);
     color: white;
+    box-shadow: var(--shadow-glow-sm);
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
 }
 
 .btn-danger {
     background: var(--color-red);
     color: white;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
 }
 
 .btn-sm {
@@ -149,7 +193,7 @@ select.input {
     width: 100%;
     padding: var(--space-3) var(--space-4);
     background: #f9fafb;
-    border: 1px solid #e5e7eb;
+    border: 2px solid #e5e7eb;
     border-radius: var(--border-radius);
     color: var(--color-text-primary);
     font-family: var(--font-family);
@@ -158,11 +202,18 @@ select.input {
     outline: none;
 }
 
+.input:hover,
+.textarea:hover,
+select.input:hover {
+    border-color: #d1d5db;
+    background: #ffffff;
+}
+
 .input:focus,
 .textarea:focus,
 select.input:focus {
     border-color: #3B82F6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 0 20px rgba(59, 130, 246, 0.1);
     background: #ffffff;
 }
 
@@ -296,6 +347,254 @@ select.input option {
     font-size: var(--font-size-sm);
     color: var(--color-text-secondary);
     margin-top: var(--space-1);
+}
+
+/* ---- Dashboard Components ---- */
+.dashboard-container {
+    padding: var(--space-8);
+}
+
+.hero-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border: 2px solid #e5e7eb;
+    border-radius: var(--border-radius-xl);
+    padding: var(--space-8);
+    position: relative;
+    overflow: hidden;
+    transition: all var(--transition-base);
+}
+
+.hero-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.hero-title {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--space-2);
+    color: #1f2937;
+}
+
+.hero-subtitle {
+    color: #6b7280;
+    font-size: var(--font-size-base);
+    margin-bottom: var(--space-4);
+    line-height: var(--line-height-base);
+}
+
+.text-accent {
+    color: var(--color-accent);
+    font-weight: 600;
+}
+
+.streak-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    background: #f0fdf4;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--border-radius);
+    width: fit-content;
+    margin-top: var(--space-4);
+}
+
+.streak-icon {
+    font-size: 1.4rem;
+}
+
+.streak-text {
+    font-weight: 600;
+    color: #15803d;
+}
+
+/* Grid responsive */
+.grid-4-responsive {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-6);
+}
+
+.grid-3-responsive {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-6);
+}
+
+@media (max-width: 1024px) {
+    .grid-4-responsive {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .grid-3-responsive {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .grid-4-responsive,
+    .grid-3-responsive {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Modern Stat Cards */
+.stat-card-modern {
+    background: #ffffff;
+    border: 2px solid #e5e7eb;
+    border-left: 4px solid;
+    border-radius: var(--border-radius-lg);
+    padding: var(--space-6);
+    text-align: center;
+    transition: all var(--transition-base);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card-modern::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    opacity: 0;
+}
+
+.stat-card-modern:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    border-color: inherit;
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-3);
+    display: inline-block;
+}
+
+.stat-value {
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--space-2);
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+/* Modern Deck Cards */
+.deck-card-modern {
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    border: 2px solid #e5e7eb;
+    border-radius: var(--border-radius-lg);
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    transition: all var(--transition-base);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.deck-card-modern::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+    pointer-events: none;
+}
+
+.deck-card-modern:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(59, 130, 246, 0.15);
+    border-color: var(--color-accent);
+}
+
+.deck-card-modern:hover::before {
+    opacity: 1;
+}
+
+.deck-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+
+.deck-card-title {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: #1f2937;
+    flex: 1;
+    word-break: break-word;
+}
+
+.deck-badge-due {
+    background: #dbeafe;
+    color: #1e40af;
+    font-size: 12px;
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--border-radius-full);
+    flex-shrink: 0;
+    margin-left: var(--space-3);
+}
+
+.deck-badge-done {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ecfdf5;
+    border-radius: 50%;
+    color: #10b981;
+    font-weight: 600;
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-left: var(--space-3);
+}
+
+.deck-card-description {
+    font-size: var(--font-size-sm);
+    color: #6b7280;
+    margin-bottom: var(--space-4);
+    flex: 1;
+    line-height: 1.5;
+}
+
+.deck-card-footer {
+    border-top: 1px solid #e5e7eb;
+    padding-top: var(--space-4);
+}
+
+.deck-card-stats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--space-3);
+}
+
+.deck-card-stat {
+    color: #6b7280;
+}
+
+.deck-card-progress {
+    color: var(--color-accent);
+    font-weight: 600;
 }
 
 /* ---- Empty State ---- */
