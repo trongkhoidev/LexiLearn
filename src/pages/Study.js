@@ -51,21 +51,19 @@ export async function renderStudy(container, params) {
 
     const renderModeSelect = () => {
       container.innerHTML = `
-        <div class="animate-fade-in-up study-container max-w-2xl mx-auto">
-          <div class="text-center mb-12">
-            <h1 class="text-3xl font-bold mb-2">Choose Study Mode</h1>
-            <p class="text-muted">You have ${cards.length} cards ready to review</p>
+        <div class="animate-fade-in-up study-container max-w-4xl mx-auto">
+          <div class="text-center mb-16">
+            <h1 class="text-4xl font-extrabold mb-4" style="background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Choose Study Mode</h1>
+            <p class="text-lg text-muted">You have <span class="font-bold text-accent">${cards.length}</span> cards ready to review</p>
           </div>
-          <div class="flex flex-col gap-4">
+          <div class="grid grid-3-responsive gap-6">
             ${MODES.map(m => `
-              <div class="card card-interactive p-6 cursor-pointer border-l-4 border-blue-500 mode-option" data-mode="${m.id}">
-                <div class="flex items-center gap-6">
-                  <div class="text-4xl">${m.label.split(' ')[0]}</div>
-                  <div class="flex-1">
-                    <div class="font-bold text-lg">${m.label}</div>
-                    <div class="text-muted">${m.desc}</div>
-                  </div>
-                  <div class="text-blue-500 text-2xl">→</div>
+              <div class="mode-card cursor-pointer" data-mode="${m.id}">
+                <div class="mode-card-inner">
+                  <div class="mode-icon">${m.label.split(' ')[0]}</div>
+                  <h3 class="mode-label">${m.label}</h3>
+                  <p class="mode-desc">${m.desc}</p>
+                  <div class="mode-arrow">→</div>
                 </div>
               </div>
             `).join('')}
@@ -73,7 +71,7 @@ export async function renderStudy(container, params) {
         </div>
       `;
 
-      container.querySelectorAll('.mode-option').forEach(el => {
+      container.querySelectorAll('.mode-card').forEach(el => {
         el.addEventListener('click', () => {
           mode = el.dataset.mode;
           renderCard();
@@ -88,33 +86,24 @@ export async function renderStudy(container, params) {
       isFlipped = false;
       const progress = Math.round((currentIndex / cards.length) * 100);
 
-      let front = '';
-      let back = '';
-      let hint = 'Click to reveal answer';
-
-      const aiImage = `<div class="h-48 bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
-        <img src="https://image.pollinations.ai/prompt/Minimalist%20illustration%20${encodeURIComponent(card.word)}?nologo=true" class="w-full h-full object-cover"/>
-      </div>`;
-
-      if (mode === 'flip') {
-        front = `${aiImage}<div class="text-4xl font-bold">${escapeHtml(card.word)}</div><div class="text-muted font-medium">${card.pos || ''} ${card.phonetic || ''}</div>`;
-        back = buildBack(card);
-      } else if (mode === 'recall') {
-        const sentence = card.example_sent || '____ is a very interesting word.';
-        const obs = sentence.replace(new RegExp(card.word, 'gi'), '______');
-        front = `<div class="text-muted mb-4">Complete the sentence:</div><div class="text-xl italic mb-6">"${escapeHtml(obs)}"</div><input id="ans-in" class="input text-center text-lg" placeholder="Type here..."><button id="check-btn" class="btn btn-primary w-full mt-4">Check</button>`;
-        back = `<div id="feedback" class="mb-4"></div><div class="text-3xl font-bold">${escapeHtml(card.word)}</div>${buildBack(card)}`;
-      } else {
-        front = `<div class="text-muted mb-4">Translate to English:</div><div class="text-2xl font-bold mb-6">${escapeHtml(card.meaning)}</div><input id="ans-in" class="input text-center text-lg" placeholder="English word..."><button id="check-btn" class="btn btn-primary w-full mt-4">Check</button>`;
-        back = `<div id="feedback" class="mb-4"></div><div class="text-3xl font-bold">${escapeHtml(card.word)}</div>${buildBack(card)}`;
-      }
+      const front = buildFront(card, mode);
+      const back = mode === 'flip' 
+        ? buildBack(card) 
+        : `<div id="feedback" class="mb-4"></div><div class="text-3xl font-bold">${escapeHtml(card.word)}</div>${buildBack(card)}`;
+      const hint = mode === 'flip' ? 'Click to reveal answer' : 'Check your answer';
 
       container.innerHTML = `
         <div class="animate-fade-in study-container max-w-xl mx-auto">
-          <div class="flex items-center justify-between mb-8">
-            <button class="btn btn-ghost btn-sm text-red-500" id="exit">Exit</button>
-            <div class="flex-1 mx-8 h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:${progress}%"></div></div>
-            <span class="badge badge-accent">${currentIndex + 1}/${cards.length}</span>
+          <div class="flashcard-progress-bar">
+            <button class="btn btn-ghost btn-sm text-red-500" id="exit">← Exit</button>
+            <div class="progress-container">
+              <div class="progress-bar-wrapper">
+                <div class="progress-bar">
+                  <div class="progress-bar-fill" style="width:${progress}%"></div>
+                </div>
+              </div>
+              <span class="progress-counter">${currentIndex + 1}/${cards.length}</span>
+            </div>
           </div>
 
           <div class="flashcard-wrapper">
@@ -125,10 +114,22 @@ export async function renderStudy(container, params) {
           </div>
 
           <div id="ratings" class="rating-buttons mt-8 hidden">
-            <button class="rating-btn again" data-r="0">Again</button>
-            <button class="rating-btn hard" data-r="1">Hard</button>
-            <button class="rating-btn good" data-r="2">Good</button>
-            <button class="rating-btn easy" data-r="3">Easy</button>
+            <button class="rating-btn again" data-r="0">
+              <span class="rating-emoji">🔴</span>
+              <span class="rating-label">Again</span>
+            </button>
+            <button class="rating-btn hard" data-r="1">
+              <span class="rating-emoji">🟡</span>
+              <span class="rating-label">Hard</span>
+            </button>
+            <button class="rating-btn good" data-r="2">
+              <span class="rating-emoji">🟢</span>
+              <span class="rating-label">Good</span>
+            </button>
+            <button class="rating-btn easy" data-r="3">
+              <span class="rating-emoji">🔵</span>
+              <span class="rating-label">Easy</span>
+            </button>
           </div>
         </div>
       `;
@@ -181,11 +182,41 @@ export async function renderStudy(container, params) {
     container.innerHTML = `<div class="p-8 text-red-500">Error: ${err.message}</div>`;
   }
 
-  function buildBack(c) {
-    return `<div class="mt-4 border-t pt-4 text-left">
-      <div class="font-bold text-lg text-blue-600 mb-2">${escapeHtml(c.meaning)}</div>
-      <p class="text-muted italic mb-4">${escapeHtml(c.explanation || '')}</p>
-      ${c.example_sent ? `<div class="p-3 bg-gray-50 rounded border-l-4 border-blue-500 italic">"${escapeHtml(c.example_sent)}"</div>` : ''}
+  // Helper function to build the back side of flashcard
+  function buildBack(card) {
+    const meaning = escapeHtml(card.meaning || '');
+    const explanation = escapeHtml(card.explanation || '');
+    const example = escapeHtml(card.example_sent || '');
+    
+    let backContent = `<div class="mt-4 border-t pt-4 text-left">
+      <div class="font-bold text-lg text-accent mb-2">${meaning}</div>`;
+    
+    if (explanation) {
+      backContent += `<p class="text-muted italic mb-4">${explanation}</p>`;
+    }
+    
+    if (example) {
+      backContent += `<div class="p-3 bg-accent-light rounded border-l-4 border-accent italic">"${example}"</div>`;
+    }
+    
+    backContent += '</div>';
+    return backContent;
+  }
+
+  // Helper function to render front side based on study mode
+  function buildFront(card, mode) {
+    const aiImage = `<div class="h-48 bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+      <img src="https://image.pollinations.ai/prompt/Minimalist%20illustration%20${encodeURIComponent(card.word)}?nologo=true" class="w-full h-full object-cover" alt="${card.word}"/>
     </div>`;
+
+    if (mode === 'flip') {
+      return `${aiImage}<div class="text-4xl font-bold">${escapeHtml(card.word)}</div><div class="text-muted font-medium">${card.pos || ''} ${card.phonetic || ''}</div>`;
+    } else if (mode === 'recall') {
+      const sentence = card.example_sent || '____ is a very interesting word.';
+      const blanked = sentence.replace(new RegExp(card.word, 'gi'), '______');
+      return `<div class="text-muted mb-4">Complete the sentence:</div><div class="text-xl italic mb-6">"${escapeHtml(blanked)}"</div><input id="ans-in" class="input text-center text-lg" placeholder="Type here..."><button id="check-btn" class="btn btn-primary w-full mt-4">Check</button>`;
+    } else {
+      return `<div class="text-muted mb-4">Translate to English:</div><div class="text-2xl font-bold mb-6">${escapeHtml(card.meaning)}</div><input id="ans-in" class="input text-center text-lg" placeholder="English word..."><button id="check-btn" class="btn btn-primary w-full mt-4">Check</button>`;
+    }
   }
 }
