@@ -3,7 +3,7 @@
    ============================================ */
 
 import { navigateTo, getCurrentRoute } from '../router.js';
-import { getDueWords } from '../data/srs.js';
+import { db } from '../utils/supabase.js';
 
 const NAV_ITEMS = [
   { label: 'HOME', items: [
@@ -13,22 +13,38 @@ const NAV_ITEMS = [
     { icon: '📚', text: 'My Decks', route: '/decks' },
     { icon: '📖', text: 'Quick Review', route: '/search' },
     { icon: '✨', text: 'AI Flashcard', route: '/ai-flashcard' },
+    { icon: '📄', text: 'Reading Practice', route: '/reading' },
+    { icon: '🎯', text: 'Cambridge Tests', route: '/cambridge' },
   ]},
   { label: 'MANAGE', items: [
     { icon: '➕', text: 'Add Word', route: '/add-word' },
   ]},
   { label: 'INSIGHTS', items: [
     { icon: '📊', text: 'Statistics', route: '/stats' },
+    { icon: '⚙️', text: 'Settings', route: '/settings' },
   ]},
 ];
 
-export function renderSidebar() {
+export async function renderSidebar() {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
 
-  const dueCount = getDueWords().length;
   const current = getCurrentRoute();
+  
+  // Initial render with loading or just base structure
+  renderBase(sidebar, current, 0);
 
+  try {
+    const words = await db.words.list();
+    const now = new Date();
+    const dueCount = words.filter(w => !w.next_review || new Date(w.next_review) <= now).length;
+    renderBase(sidebar, current, dueCount);
+  } catch (err) {
+    console.error('Sidebar error:', err);
+  }
+}
+
+function renderBase(sidebar, current, dueCount) {
   sidebar.innerHTML = `
     <div class="sidebar-header">
       <div class="sidebar-logo">L</div>
@@ -52,7 +68,22 @@ export function renderSidebar() {
     </div>
   `;
 
-  // Mobile header
+  // Mobile header logic (already in renderSidebar usually but moved for clarity)
+  setupMobileHeader();
+
+  // Attach listeners
+  sidebar.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const route = link.getAttribute('data-route');
+      navigateTo(route);
+      sidebar.classList.remove('open');
+      document.querySelector('.sidebar-overlay')?.classList.remove('visible');
+    });
+  });
+}
+
+function setupMobileHeader() {
   let mobileHeader = document.querySelector('.mobile-header');
   if (!mobileHeader) {
     mobileHeader = document.createElement('div');
@@ -74,24 +105,13 @@ export function renderSidebar() {
     document.body.appendChild(overlay);
   }
 
-  // Event listeners
-  sidebar.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const route = link.getAttribute('data-route');
-      navigateTo(route);
-      sidebar.classList.remove('open');
-      overlay.classList.remove('visible');
-    });
-  });
-
   document.getElementById('hamburger-btn')?.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
+    document.getElementById('sidebar')?.classList.toggle('open');
     overlay.classList.toggle('visible');
   });
 
   overlay.addEventListener('click', () => {
-    sidebar.classList.remove('open');
+    document.getElementById('sidebar')?.classList.remove('open');
     overlay.classList.remove('visible');
   });
 }

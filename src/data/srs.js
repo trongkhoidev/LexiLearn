@@ -1,11 +1,4 @@
-/* ============================================
-   LexiLearn SRS — Spaced Repetition Engine
-   ============================================
-   SM-2 inspired algorithm with 6 levels.
-   Ratings: 0 = Again, 1 = Hard, 2 = Good, 3 = Easy
-*/
-
-import { getWords, saveWord } from './store.js';
+import { db } from '../utils/supabase.js';
 
 // Intervals in minutes for each level
 const BASE_INTERVALS = [
@@ -22,119 +15,88 @@ const RATING = { AGAIN: 0, HARD: 1, GOOD: 2, EASY: 3 };
 export { RATING };
 
 /**
- * Process a review and update the word's SRS data.
- * @param {string} wordId
- * @param {number} rating 0-3
- * @returns {object} updated word
+ * Process a review and update the word's SRS data in the database.
  */
-export function processReview(wordId, rating) {
-  const words = getWords();
-  const word = words.find(w => w.id === wordId);
+export async function processReview(wordId, rating) {
+  const word = await db.words.getById(wordId);
   if (!word) return null;
 
-  let { srsLevel = 0, easeFactor = 2.5, interval = 0, reviewCount = 0, againCount = 0 } = word;
+  let srs_level = Number(word.srs_level) || 0;
+  let ease_factor = Number(word.ease_factor) || 2.5;
+  let review_count = Number(word.review_count) || 0;
+  let again_count = Number(word.again_count) || 0;
 
-  reviewCount++;
+  review_count++;
 
+  let interval = 0;
   switch (rating) {
     case RATING.AGAIN:
-      srsLevel = 0;
-      easeFactor = Math.max(1.3, easeFactor - 0.2);
+      srs_level = 0;
+      ease_factor = Math.max(1.3, ease_factor - 0.2);
       interval = BASE_INTERVALS[0];
-      againCount++;
+      again_count++;
       break;
 
     case RATING.HARD:
-      srsLevel = Math.max(0, srsLevel);
-      easeFactor = Math.max(1.3, easeFactor - 0.15);
-      interval = (BASE_INTERVALS[srsLevel] || BASE_INTERVALS[5]) * 0.8;
+      srs_level = Math.max(0, srs_level);
+      ease_factor = Math.max(1.3, ease_factor - 0.15);
+      interval = (BASE_INTERVALS[srs_level] || BASE_INTERVALS[5]) * 0.8;
       break;
 
     case RATING.GOOD:
-      srsLevel = Math.min(5, srsLevel + 1);
-      interval = (BASE_INTERVALS[srsLevel] || BASE_INTERVALS[5]) * easeFactor / 2.5;
+      srs_level = Math.min(5, srs_level + 1);
+      interval = (BASE_INTERVALS[srs_level] || BASE_INTERVALS[5]) * ease_factor / 2.5;
       break;
 
     case RATING.EASY:
-      srsLevel = Math.min(5, srsLevel + 2);
-      easeFactor = Math.min(3.0, easeFactor + 0.15);
-      interval = (BASE_INTERVALS[Math.min(srsLevel, 5)] || BASE_INTERVALS[5]) * easeFactor / 2.5 * 1.3;
+      srs_level = Math.min(5, srs_level + 2);
+      ease_factor = Math.min(3.0, ease_factor + 0.15);
+      interval = (BASE_INTERVALS[Math.min(srs_level, 5)] || BASE_INTERVALS[5]) * ease_factor / 2.5 * 1.3;
       break;
   }
 
-  const now = Date.now();
-  const nextReview = now + interval * 60 * 1000;
+  const now = new Date();
+  const nextReview = new Date(now.getTime() + interval * 60 * 1000).toISOString();
 
   const updated = {
-    ...word,
-    srsLevel,
-    easeFactor: Math.round(easeFactor * 100) / 100,
-    interval: Math.round(interval),
-    nextReview,
-    reviewCount,
-    againCount,
-    lastReview: now,
+    srs_level,
+    ease_factor: Math.round(ease_factor * 100) / 100,
+    next_review: nextReview,
+    last_review: now.toISOString(),
+    review_count,
+    again_count,
   };
 
-  saveWord(updated);
-  return updated;
-}
-
-/**
- * Get words due for review (nextReview <= now).
- * Optionally filter by deckId.
- */
-export function getDueWords(deckId = null) {
-  const now = Date.now();
-  let words = getWords().filter(w => w.nextReview <= now);
-  if (deckId) words = words.filter(w => w.deckId === deckId);
-  // Sort: most overdue first
-  words.sort((a, b) => a.nextReview - b.nextReview);
-  return words;
-}
-
-/**
- * Get new words (never reviewed).
- */
-export function getNewWords(deckId = null) {
-  let words = getWords().filter(w => w.reviewCount === 0);
-  if (deckId) words = words.filter(w => w.deckId === deckId);
-  return words;
-}
-
-/**
- * Get difficult words (againCount >= 3 or easeFactor < 1.8).
- */
-export function getDifficultWords() {
-  return getWords().filter(w => w.againCount >= 3 || w.easeFactor < 1.8);
+  return await db.words.update(wordId, updated);
 }
 
 /**
  * Get mastery level for a word.
  */
-export function getMasteryLabel(word) {
-  if (word.srsLevel >= 5) return 'Mastered';
-  if (word.srsLevel >= 3) return 'Intermediate';
-  if (word.srsLevel >= 1) return 'Learning';
+export function getMasteryLabel(srsLevel) {
+  if (srsLevel >= 5) return 'Mastered';
+  if (srsLevel >= 3) return 'Intermediate';
+  if (srsLevel >= 1) return 'Learning';
   return 'New';
 }
 
 /**
- * Get mastery distribution for all words.
+ * Get mastery distribution from a list of words.
  */
-export function getMasteryDistribution() {
-  const words = getWords();
+export function getMasteryDistribution(words) {
   const dist = { New: 0, Learning: 0, Intermediate: 0, Mastered: 0 };
   words.forEach(w => {
-    dist[getMasteryLabel(w)]++;
+    dist[getMasteryLabel(w.srs_level || 0)]++;
   });
   return dist;
 }
 
 /**
- * Get a human-readable next review string.
+ * Format next review time.
  */
-export function formatNextReview(nextReview) {
+export function formatNextReview(nextReviewStr) {
+  if (!nextReviewStr) return 'New';
+  const nextReview = new Date(nextReviewStr).getTime();
   const now = Date.now();
   const diff = nextReview - now;
 

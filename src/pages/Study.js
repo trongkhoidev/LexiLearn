@@ -1,14 +1,9 @@
-/* ============================================
-   LexiLearn — Study (Flashcard) Page
-   ============================================
-   3 modes: Basic Flip, Recall (fill-in-blank), Meaning Recall
-*/
-
-import { getWords, recordStudySession } from '../data/store.js';
-import { getDueWords, getNewWords, processReview, RATING, formatNextReview } from '../data/srs.js';
+import { db } from '../utils/supabase.js';
+import { processReview, RATING } from '../data/srs.js';
 import { navigateTo } from '../router.js';
 import { escapeHtml } from '../utils/helpers.js';
 import { showToast } from '../components/Toast.js';
+import { validateAnswer } from '../utils/gemini.js';
 
 const MODES = [
   { id: 'flip', label: '🔄 Basic Flip', desc: 'See word, flip to reveal meaning' },
@@ -16,389 +11,181 @@ const MODES = [
   { id: 'meaning', label: '🧠 Meaning Recall', desc: 'See meaning, recall the word' },
 ];
 
-export function renderStudy(container, params) {
+export async function renderStudy(container, params) {
   const deckId = params.id === 'all' ? null : params.id;
-  let cards = [...getDueWords(deckId), ...getNewWords(deckId).slice(0, 10)];
+  
+  container.innerHTML = `<div class="flex flex-col items-center justify-center p-20"><div class="spinner"></div><p class="mt-4 text-muted">Loading cards...</p></div>`;
 
-  // Deduplicate
-  const seen = new Set();
-  cards = cards.filter(c => {
-    if (seen.has(c.id)) return false;
-    seen.add(c.id);
-    return true;
-  });
-
-  if (cards.length === 0) {
-    container.innerHTML = `
-      <div class="animate-fade-in-up study-container">
-        <div class="empty-state card" style="margin-top:var(--space-16);">
-          <div class="empty-state-icon">🎉</div>
-          <div class="empty-state-title">All caught up!</div>
-          <div class="empty-state-text">No cards are due for review right now. Come back later or add more words.</div>
-          <div class="flex gap-3">
-            <button class="btn btn-primary" id="back-to-dash">🏠 Dashboard</button>
-            <button class="btn btn-secondary" id="add-more-btn">➕ Add Words</button>
-          </div>
-        </div>
-      </div>
-    `;
-    container.querySelector('#back-to-dash')?.addEventListener('click', () => navigateTo('/dashboard'));
-    container.querySelector('#add-more-btn')?.addEventListener('click', () => navigateTo('/add-word'));
-    return;
-  }
-
-  // State
-  let mode = 'flip';
-  let currentIndex = 0;
-  let isFlipped = false;
-  let sessionNew = 0;
-  let sessionReview = 0;
-  let sessionResults = [];  // { word, rating }
-
-  const renderModeSelect = () => {
-    container.innerHTML = `
-      <div class="animate-fade-in-up study-container" style="margin-top:var(--space-4);">
-        <button class="btn btn-ghost btn-sm" id="study-back-btn" style="margin-bottom:var(--space-6);">← Back</button>
-        <div style="text-align:center;margin-bottom:var(--space-8);">
-          <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;margin-bottom:var(--space-2);">Choose Study Mode</h1>
-          <p style="color:#6b7280;font-size:var(--font-size-base);">You have ${cards.length} card${cards.length !== 1 ? 's' : ''} ready to study</p>
-        </div>
-        <div class="flex flex-col gap-3" style="max-width:600px;margin:0 auto;">
-          ${MODES.map(m => `
-            <div class="card card-interactive mode-option" data-mode="${m.id}" style="padding:var(--space-6);cursor:pointer;border-left:4px solid #3B82F6;transition:all 0.2s ease;">
-              <div class="flex items-center gap-4">
-                <div style="font-size:2rem;min-width:50px;display:flex;align-items:center;justify-content:center;">${m.label.split(' ')[0]}</div>
-                <div style="flex:1;text-align:left;">
-                  <div style="font-size:var(--font-size-base);font-weight:600;color:#1f2937;margin-bottom:var(--space-1);">${m.label}</div>
-                  <div style="font-size:var(--font-size-sm);color:#6b7280;">${m.desc}</div>
-                </div>
-                <div style="color:#3B82F6;font-size:1.5rem;">→</div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-
-    container.querySelector('#study-back-btn').addEventListener('click', () => window.history.back());
-    container.querySelectorAll('.mode-option').forEach(el => {
-      el.addEventListener('click', () => {
-        mode = el.dataset.mode;
-        currentIndex = 0;
-        isFlipped = false;
-        renderCard();
-      });
-    });
-  };
-
-  const getCurrentCard = () => cards[currentIndex];
-
-  const renderCard = () => {
-    const card = getCurrentCard();
-    if (!card) return renderSummary();
-
-    isFlipped = false;
-
-    const progressPct = Math.round((currentIndex / cards.length) * 100);
-
-    let frontContent = '';
-    let backContent = '';
-    let hint = 'Click card to reveal';
-
-    const getAiImageUrl = (item) => `https://image.pollinations.ai/prompt/Vector%20illustration%20of%20the%20word%20${encodeURIComponent(item.word)}?width=600&height=400&nologo=true`;
-    const aiImageHtml = `
-      <div class="flashcard-image-container" style="width:100%; height:180px; margin-bottom:var(--space-4); border-radius:var(--radius-md); overflow:hidden; background:var(--color-bg-secondary); position:relative;">
-        <img src="${getAiImageUrl(card)}" alt="AI Gen" style="width:100%; height:100%; object-fit:cover; display:block;" onerror="this.parentElement.style.display='none'" />
-        <div style="position:absolute; bottom:5px; left:5px; background:rgba(0,0,0,0.6); color:#fff; font-size:10px; padding:2px 4px; border-radius:4px;">✨ Free AI Gen</div>
-      </div>
-    `;
-
-    switch (mode) {
-      case 'flip':
-        frontContent = `
-          ${aiImageHtml}
-          <div class="flashcard-word">${escapeHtml(card.word)}</div>
-          ${card.partOfSpeech ? `<div class="flashcard-pos">${escapeHtml(card.partOfSpeech)}</div>` : ''}
-          ${card.phonetic ? `<div class="flashcard-phonetic">${escapeHtml(card.phonetic)}</div>` : ''}
-        `;
-        backContent = buildBackContent(card);
-        break;
-
-      case 'recall':
-        const sentence = card.example || `Use the word: ____`;
-        const blanked = card.example ? sentence.replace(new RegExp(escapeRegex(card.word), 'gi'), '______') : sentence;
-        frontContent = `
-          <div style="font-size:var(--font-size-lg);color:var(--color-text-secondary);margin-bottom:var(--space-4);">Fill in the blank:</div>
-          <div style="font-size:var(--font-size-xl);font-weight:var(--font-weight-semibold);line-height:1.5;">${escapeHtml(blanked)}</div>
-        `;
-        backContent = `
-          ${aiImageHtml}
-          <div style="margin-bottom:var(--space-4);">
-            <div class="text-sm text-muted" style="margin-bottom:var(--space-1);">Answer:</div>
-            <div class="flashcard-word" style="font-size:var(--font-size-2xl);">${escapeHtml(card.word)}</div>
-          </div>
-          ${buildBackContent(card)}
-        `;
-        hint = 'Click to see the answer';
-        break;
-
-      case 'meaning':
-        frontContent = `
-          <div style="font-size:var(--font-size-lg);color:var(--color-text-secondary);margin-bottom:var(--space-4);">What word means:</div>
-          <div style="font-size:var(--font-size-xl);font-weight:var(--font-weight-semibold);">${escapeHtml(card.meaning)}</div>
-          ${card.explanation ? `<div class="text-sm text-muted" style="margin-top:var(--space-3);">${escapeHtml(card.explanation)}</div>` : ''}
-        `;
-        backContent = `
-          ${aiImageHtml}
-          <div style="margin-bottom:var(--space-4);">
-            <div class="flashcard-word" style="font-size:var(--font-size-2xl);">${escapeHtml(card.word)}</div>
-            ${card.partOfSpeech ? `<div class="flashcard-pos">${escapeHtml(card.partOfSpeech)}</div>` : ''}
-          </div>
-          ${buildBackContent(card)}
-        `;
-        hint = 'Click to reveal the word';
-        break;
-    }
-
-    container.innerHTML = `
-      <div class="animate-fade-in study-container">
-        <div class="flex items-center justify-between" style="margin-bottom:var(--space-6);">
-          <button class="btn btn-ghost btn-sm" id="exit-study" style="color:#ef4444;">Exit Study</button>
-          <div style="text-align:center;">
-            <div style="font-size:var(--font-size-sm);color:#6b7280;margin-bottom:var(--space-1);">Card <span style="font-weight:600;color:#1f2937;">${currentIndex + 1}</span> of <span style="font-weight:600;color:#1f2937;">${cards.length}</span></div>
-            <div class="progress-bar" style="height:4px;width:200px;">
-              <div class="progress-bar-fill" style="width:${progressPct}%;background:linear-gradient(90deg, #3B82F6 0%, #06b6d4 100%);"></div>
-            </div>
-          </div>
-          <span style="background:#dbeafe;color:#1e40af;padding:var(--space-2) var(--space-3);border-radius:var(--border-radius);font-size:var(--font-size-xs);font-weight:600;">${MODES.find(m => m.id === mode).label}</span>
-        </div>
-
-        <!-- Flashcard -->
-        <div class="flex items-center justify-center gap-6 w-full">
-          <button class="btn btn-secondary btn-sm" id="side-prev-btn" style="font-size:18px; width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px;" ${currentIndex === 0 ? 'disabled' : ''}>←</button>
-          
-          <div class="flashcard-wrapper" style="flex:1; max-width:640px;">
-            <div class="flashcard" id="flashcard" style="cursor:pointer;user-select:none;">
-              <div class="flashcard-face flashcard-front">
-                ${frontContent}
-                <div class="flashcard-hint" style="margin-top:auto;">${hint}</div>
-              </div>
-              <div class="flashcard-face flashcard-back">
-                ${backContent}
-              </div>
-            </div>
-          </div>
-          
-          <button class="btn btn-secondary btn-sm" id="side-next-btn" style="font-size:18px; width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px;" ${currentIndex === cards.length - 1 ? 'disabled' : ''}>→</button>
-        </div>
-
-        <!-- Rating buttons (hidden until flipped) -->
-        <div class="rating-buttons" id="rating-buttons" style="display:none;">
-          <button class="rating-btn again" data-rating="0">
-            Again
-            <span class="rating-label">&lt; 10m</span>
-          </button>
-          <button class="rating-btn hard" data-rating="1">
-            Hard
-            <span class="rating-label">Review soon</span>
-          </button>
-          <button class="rating-btn good" data-rating="2">
-            Good
-            <span class="rating-label">Next level</span>
-          </button>
-          <button class="rating-btn easy" data-rating="3">
-            Easy
-            <span class="rating-label">Skip ahead</span>
-          </button>
-        </div>
-
-        <!-- Audio (if available) -->
-        ${card.audioUrl ? `<audio id="card-audio" src="${card.audioUrl}"></audio>` : ''}
-      </div>
-    `;
-
-    // Nav functions
-    const goPrev = () => { if (currentIndex > 0) { currentIndex--; renderCard(); } };
-    const goNext = () => { if (currentIndex < cards.length - 1) { currentIndex++; renderCard(); } };
-
-    // Flip card
-    const flashcard = document.getElementById('flashcard');
-    flashcard.addEventListener('click', () => {
-      isFlipped = !isFlipped;
-      if (isFlipped) {
-        flashcard.classList.add('flipped');
-        document.getElementById('rating-buttons').style.display = 'grid';
-        // Play audio if available
-        document.getElementById('card-audio')?.play().catch(() => {});
-      } else {
-        flashcard.classList.remove('flipped');
-      }
-    });
-
-    // Rating buttons
-    document.querySelectorAll('.rating-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const rating = parseInt(btn.dataset.rating);
-        const word = getCurrentCard();
-        processReview(word.id, rating);
-
-        if (word.reviewCount === 0) sessionNew++;
-        else sessionReview++;
-
-        sessionResults.push({ word: word.word, rating });
-
-        currentIndex++;
-        renderCard();
-      });
-    });
-
-    // Exit
-    document.getElementById('exit-study')?.addEventListener('click', () => {
-      if (sessionNew + sessionReview > 0) {
-        recordStudySession(sessionNew, sessionReview);
-      }
-      if (window._studyKeydownHandler) {
-        document.removeEventListener('keydown', window._studyKeydownHandler);
-      }
-      window.history.back();
-    });
-
-    // Nav buttons
-    document.getElementById('prev-card-btn')?.addEventListener('click', goPrev);
-    document.getElementById('next-card-btn')?.addEventListener('click', goNext);
-    document.getElementById('side-prev-btn')?.addEventListener('click', goPrev);
-    document.getElementById('side-next-btn')?.addEventListener('click', goNext);
-
-    // Keyboard navigation
-    const handleKeydown = (e) => {
-      // Clean up if we migrated away from page
-      if (!document.getElementById('flashcard')) {
-        document.removeEventListener('keydown', window._studyKeydownHandler);
-        return;
-      }
-      // Don't intercept if user is typing
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-      if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault();
-        document.getElementById('flashcard')?.click();
-      } else if (e.code === 'ArrowRight') {
-        e.preventDefault();
-        goNext();
-      } else if (e.code === 'ArrowLeft') {
-        e.preventDefault();
-        goPrev();
-      }
-    };
+  try {
+    const allWords = await db.words.list();
+    let wordsInDeck = deckId ? allWords.filter(w => w.deck_id === deckId) : allWords;
     
-    // Bind global listener safely
-    if (window._studyKeydownHandler) {
-      document.removeEventListener('keydown', window._studyKeydownHandler);
+    const now = new Date();
+    let cards = wordsInDeck.filter(w => !w.next_review || new Date(w.next_review) <= now);
+    
+    if (cards.length === 0) {
+      cards = wordsInDeck.filter(w => !w.review_count).slice(0, 10);
     }
-    window._studyKeydownHandler = handleKeydown;
-    document.addEventListener('keydown', handleKeydown);
-  };
 
-  const renderSummary = () => {
-    recordStudySession(sessionNew, sessionReview);
-
-    const ratingLabels = ['Again', 'Hard', 'Good', 'Easy'];
-    const ratingColors = ['#ef4444', '#f59e0b', '#10b981', '#3B82F6'];
-
-    container.innerHTML = `
-      <div class="animate-fade-in-up study-container">
-        <div class="card" style="margin-top:var(--space-12);padding:var(--space-8);text-align:center;">
-          <div style="font-size:3rem;margin-bottom:var(--space-4);">🎉</div>
-          <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;margin-bottom:var(--space-2);">Session Complete!</h1>
-          <p style="color:#6b7280;margin-bottom:var(--space-8);">Great job! You reviewed <strong style="color:#3B82F6;">${sessionNew + sessionReview}</strong> card${sessionNew + sessionReview !== 1 ? 's' : ''}</p>
-
-          <div class="grid grid-2" style="max-width:320px;margin:0 auto var(--space-8);gap:var(--space-4);">
-            <div style="padding:var(--space-6);background:#f0f9ff;border-radius:var(--border-radius);border-left:4px solid #3B82F6;">
-              <div style="font-size:var(--font-size-2xl);font-weight:700;color:#3B82F6;margin-bottom:var(--space-2);">${sessionNew}</div>
-              <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">New Cards</div>
-            </div>
-            <div style="padding:var(--space-6);background:#f9fafb;border-radius:var(--border-radius);border-left:4px solid #8b5cf6;">
-              <div style="font-size:var(--font-size-2xl);font-weight:700;color:#8b5cf6;margin-bottom:var(--space-2);">${sessionReview}</div>
-              <div style="color:#6b7280;font-size:var(--font-size-sm);font-weight:500;">Reviewed</div>
-            </div>
-          </div>
-
-          ${sessionResults.length > 0 ? `
-            <div style="text-align:left;max-height:200px;overflow-y:auto;margin-bottom:var(--space-6);">
-              ${sessionResults.map(r => `
-                <div class="flex items-center justify-between" style="padding:var(--space-2) 0;border-bottom:1px solid var(--color-border);">
-                  <span>${escapeHtml(r.word)}</span>
-                  <span style="color:${ratingColors[r.rating]};font-weight:var(--font-weight-semibold);font-size:var(--font-size-sm);">${ratingLabels[r.rating]}</span>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-
-          <div class="flex gap-3 justify-center">
-            <button class="btn btn-primary" id="summary-dashboard">🏠 Dashboard</button>
-            <button class="btn btn-secondary" id="summary-study-more">📖 Study More</button>
+    if (cards.length === 0) {
+      container.innerHTML = `
+        <div class="animate-fade-in-up study-container text-center p-20">
+          <div class="text-6xl mb-6">🎉</div>
+          <h2 class="text-2xl font-bold mb-4">All caught up!</h2>
+          <p class="text-muted mb-8">No cards are due for review right now. Come back later or add more words.</p>
+          <div class="flex gap-4 justify-center">
+            <button class="btn btn-primary" id="back-to-dash">Dashboard</button>
+            <button class="btn btn-secondary" id="add-more-btn">Add Words</button>
           </div>
         </div>
-      </div>
-    `;
+      `;
+      document.getElementById('back-to-dash')?.addEventListener('click', () => navigateTo('/dashboard'));
+      document.getElementById('add-more-btn')?.addEventListener('click', () => navigateTo('/add-word'));
+      return;
+    }
 
-    document.getElementById('summary-dashboard')?.addEventListener('click', () => navigateTo('/dashboard'));
-    document.getElementById('summary-study-more')?.addEventListener('click', () => {
-      sessionNew = 0;
-      sessionReview = 0;
-      sessionResults = [];
-      currentIndex = 0;
-      cards = [...getDueWords(deckId), ...getNewWords(deckId).slice(0, 10)];
-      const seen2 = new Set();
-      cards = cards.filter(c => { if (seen2.has(c.id)) return false; seen2.add(c.id); return true; });
-      if (cards.length === 0) {
-        showToast('No more cards to study!', 'info');
-        navigateTo('/dashboard');
+    let mode = 'flip';
+    let currentIndex = 0;
+    let isFlipped = false;
+    let sessionResults = [];
+
+    const renderModeSelect = () => {
+      container.innerHTML = `
+        <div class="animate-fade-in-up study-container max-w-2xl mx-auto">
+          <div class="text-center mb-12">
+            <h1 class="text-3xl font-bold mb-2">Choose Study Mode</h1>
+            <p class="text-muted">You have ${cards.length} cards ready to review</p>
+          </div>
+          <div class="flex flex-col gap-4">
+            ${MODES.map(m => `
+              <div class="card card-interactive p-6 cursor-pointer border-l-4 border-blue-500 mode-option" data-mode="${m.id}">
+                <div class="flex items-center gap-6">
+                  <div class="text-4xl">${m.label.split(' ')[0]}</div>
+                  <div class="flex-1">
+                    <div class="font-bold text-lg">${m.label}</div>
+                    <div class="text-muted">${m.desc}</div>
+                  </div>
+                  <div class="text-blue-500 text-2xl">→</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      container.querySelectorAll('.mode-option').forEach(el => {
+        el.addEventListener('click', () => {
+          mode = el.dataset.mode;
+          renderCard();
+        });
+      });
+    };
+
+    const renderCard = () => {
+      const card = cards[currentIndex];
+      if (!card) return renderSummary();
+
+      isFlipped = false;
+      const progress = Math.round((currentIndex / cards.length) * 100);
+
+      let front = '';
+      let back = '';
+      let hint = 'Click to reveal answer';
+
+      const aiImage = `<div class="h-48 bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+        <img src="https://image.pollinations.ai/prompt/Minimalist%20illustration%20${encodeURIComponent(card.word)}?nologo=true" class="w-full h-full object-cover"/>
+      </div>`;
+
+      if (mode === 'flip') {
+        front = `${aiImage}<div class="text-4xl font-bold">${escapeHtml(card.word)}</div><div class="text-muted font-medium">${card.pos || ''} ${card.phonetic || ''}</div>`;
+        back = buildBack(card);
+      } else if (mode === 'recall') {
+        const sentence = card.example_sent || '____ is a very interesting word.';
+        const obs = sentence.replace(new RegExp(card.word, 'gi'), '______');
+        front = `<div class="text-muted mb-4">Complete the sentence:</div><div class="text-xl italic mb-6">"${escapeHtml(obs)}"</div><input id="ans-in" class="input text-center text-lg" placeholder="Type here..."><button id="check-btn" class="btn btn-primary w-full mt-4">Check</button>`;
+        back = `<div id="feedback" class="mb-4"></div><div class="text-3xl font-bold">${escapeHtml(card.word)}</div>${buildBack(card)}`;
       } else {
-        renderModeSelect();
+        front = `<div class="text-muted mb-4">Translate to English:</div><div class="text-2xl font-bold mb-6">${escapeHtml(card.meaning)}</div><input id="ans-in" class="input text-center text-lg" placeholder="English word..."><button id="check-btn" class="btn btn-primary w-full mt-4">Check</button>`;
+        back = `<div id="feedback" class="mb-4"></div><div class="text-3xl font-bold">${escapeHtml(card.word)}</div>${buildBack(card)}`;
       }
-    });
-  };
 
-  renderModeSelect();
-}
+      container.innerHTML = `
+        <div class="animate-fade-in study-container max-w-xl mx-auto">
+          <div class="flex items-center justify-between mb-8">
+            <button class="btn btn-ghost btn-sm text-red-500" id="exit">Exit</button>
+            <div class="flex-1 mx-8 h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:${progress}%"></div></div>
+            <span class="badge badge-accent">${currentIndex + 1}/${cards.length}</span>
+          </div>
 
-function buildBackContent(card) {
-  let html = '';
-  if (card.meaning) {
-    html += `<div style="margin-bottom:var(--space-4);">
-      <div class="text-sm text-muted" style="margin-bottom:var(--space-1);">Meaning</div>
-      <div style="font-size:var(--font-size-md);font-weight:var(--font-weight-semibold);">${escapeHtml(card.meaning)}</div>
-    </div>`;
-  }
-  if (card.explanation) {
-    html += `<div style="margin-bottom:var(--space-4);">
-      <div class="text-sm text-muted" style="margin-bottom:var(--space-1);">Explanation</div>
-      <div>${escapeHtml(card.explanation)}</div>
-    </div>`;
-  }
-  if (card.example) {
-    html += `<div style="margin-bottom:var(--space-4);">
-      <div class="text-sm text-muted" style="margin-bottom:var(--space-1);">Example</div>
-      <div style="font-style:italic;">"${escapeHtml(card.example)}"</div>
-      ${card.exampleMeaning ? `<div class="text-sm text-muted" style="margin-top:var(--space-1);">${escapeHtml(card.exampleMeaning)}</div>` : ''}
-    </div>`;
-  }
-  if (card.synonyms) {
-    html += `<div style="margin-bottom:var(--space-3);">
-      <div class="text-sm text-muted" style="margin-bottom:var(--space-1);">Synonyms</div>
-      <div class="flex flex-wrap gap-2">${card.synonyms.split(',').map(s => `<span class="tag">${escapeHtml(s.trim())}</span>`).join('')}</div>
-    </div>`;
-  }
-  if (card.antonyms) {
-    html += `<div>
-      <div class="text-sm text-muted" style="margin-bottom:var(--space-1);">Antonyms</div>
-      <div class="flex flex-wrap gap-2">${card.antonyms.split(',').map(s => `<span class="tag">${escapeHtml(s.trim())}</span>`).join('')}</div>
-    </div>`;
-  }
-  return html;
-}
+          <div class="flashcard-wrapper">
+            <div class="flashcard" id="fcard">
+              <div class="flashcard-face flashcard-front">${front}<div class="mt-auto text-xs text-muted">${hint}</div></div>
+              <div class="flashcard-face flashcard-back">${back}</div>
+            </div>
+          </div>
 
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          <div id="ratings" class="rating-buttons mt-8 hidden">
+            <button class="rating-btn again" data-r="0">Again</button>
+            <button class="rating-btn hard" data-r="1">Hard</button>
+            <button class="rating-btn good" data-r="2">Good</button>
+            <button class="rating-btn easy" data-r="3">Easy</button>
+          </div>
+        </div>
+      `;
+
+      const fcard = document.getElementById('fcard');
+      const showAnswer = () => {
+        if (isFlipped) return;
+        isFlipped = true;
+        fcard.classList.add('flipped');
+        document.getElementById('ratings').classList.remove('hidden');
+      };
+
+      if (mode === 'flip') fcard.addEventListener('click', showAnswer);
+      
+      document.getElementById('check-btn')?.addEventListener('click', () => {
+        const val = document.getElementById('ans-in').value.trim().toLowerCase();
+        const correct = val === card.word.toLowerCase();
+        const fb = document.getElementById('feedback');
+        fb.innerHTML = correct ? '<span class="text-green-500 font-bold text-lg">✅ Correct!</span>' : `<span class="text-red-500 font-bold text-lg">❌ Incorrect</span>`;
+        showAnswer();
+      });
+
+      document.querySelectorAll('.rating-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const rating = parseInt(btn.dataset.r);
+          await processReview(card.id, rating);
+          await db.progress.logReview(card.id, rating, rating > 0);
+          sessionResults.push({ word: card.word, rating: btn.dataset.r });
+          currentIndex++;
+          renderCard();
+        });
+      });
+
+      document.getElementById('exit').addEventListener('click', () => window.history.back());
+    };
+
+    const renderSummary = () => {
+      container.innerHTML = `
+        <div class="study-container text-center p-20">
+          <h1 class="text-4xl font-bold mb-4">Keep it up! 🚀</h1>
+          <p class="text-muted mb-8 text-lg">You reviewed ${sessionResults.length} cards in this session.</p>
+          <button class="btn btn-primary px-10" onclick="location.hash='#/dashboard'">Finish</button>
+        </div>
+      `;
+    };
+
+    renderModeSelect();
+
+  } catch (err) {
+    container.innerHTML = `<div class="p-8 text-red-500">Error: ${err.message}</div>`;
+  }
+
+  function buildBack(c) {
+    return `<div class="mt-4 border-t pt-4 text-left">
+      <div class="font-bold text-lg text-blue-600 mb-2">${escapeHtml(c.meaning)}</div>
+      <p class="text-muted italic mb-4">${escapeHtml(c.explanation || '')}</p>
+      ${c.example_sent ? `<div class="p-3 bg-gray-50 rounded border-l-4 border-blue-500 italic">"${escapeHtml(c.example_sent)}"</div>` : ''}
+    </div>`;
+  }
 }

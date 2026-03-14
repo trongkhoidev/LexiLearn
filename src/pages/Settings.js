@@ -1,58 +1,89 @@
-import { el } from '../utils/helpers.js';
-import { getApiKey, saveApiKey } from '../data/store.js';
-import { showToast } from '../components/Toast.js';
+/* ============================================
+   LexiLearn — Settings Page
+   ============================================
+   Manage API keys and advanced preferences.
+*/
 
 export function renderSettings(container) {
-  const currentKey = getApiKey() || '';
+  const settings = loadSettings();
 
-  const content = el('div', { className: 'page-container' }, [
-    el('div', { className: 'page-header' }, [
-      el('h1', {}, '⚙️ Settings'),
-      el('p', { className: 'text-muted' }, 'Configure your LexiLearn experience and AI integrations.'),
-    ]),
+  container.innerHTML = `
+    <div class="animate-fade-in-up" style="max-width:720px;margin:0 auto;">
+      <div class="page-header" style="margin-bottom:var(--space-8);">
+        <h1 style="font-size:1.75rem;font-weight:700;">⚙️ Settings</h1>
+        <p class="text-muted" style="max-width:560px;">
+          Manage your Gemini API key used for Cambridge test parsing, word lookups, and other AI features.
+          If you frequently see messages like "AI is currently busy" or missing Vietnamese meanings, adding your own key will help avoid shared rate limits.
+        </p>
+      </div>
 
-    el('div', { className: 'card' }, [
-      el('h2', {}, 'AI Integration (Gemini API)'),
-      el('p', { className: 'text-sm text-muted' }, 'To use advanced AI features (like auto-generating flashcards from text or AI conversation roleplay), you need a free Google Gemini API key.'),
-      el('p', { className: 'text-sm text-muted' }, [
-        'Get your free key at: ',
-        el('a', { className: 'text-primary', href: 'https://aistudio.google.com/app/apikey', target: '_blank' }, 'Google AI Studio')
-      ]),
-      el('div', { className: 'form-group' }, [
-        el('label', {}, 'Gemini API Key'),
-        el('input', {
-          className: 'input',
-          type: 'password',
-          id: 'settings-api-key',
-          placeholder: 'AIzaSy...',
-          value: currentKey
-        }),
-        el('p', { className: 'text-xs text-muted mt-2' }, 'Your key is stored locally in your browser and is never sent to our servers.')
-      ]),
-      el('div', { className: 'flex gap-2 mt-4' }, [
-        el('button', { className: 'btn btn-primary', id: 'settings-save-btn' }, 'Save Settings'),
-        el('button', { className: 'btn btn-outline', id: 'settings-clear-btn' }, 'Clear Key')
-      ])
-    ])
-  ]);
+      <div class="card" style="padding:var(--space-6);margin-bottom:var(--space-6);">
+        <h2 style="font-size:1.1rem;font-weight:600;margin-bottom:var(--space-4);">Gemini API Key</h2>
+        <label class="form-label" for="gemini-key-input">API Key</label>
+        <input
+          id="gemini-key-input"
+          type="password"
+          class="input"
+          placeholder="Paste your Gemini API key..."
+          value="${settings.geminiApiKey ? maskKey(settings.geminiApiKey) : ''}"
+        />
+        <p class="text-xs text-muted" style="margin-top:var(--space-2);">
+          Stored securely in your browser's localStorage only. This key is never sent to our servers.
+        </p>
 
-  container.innerHTML = '';
-  container.appendChild(content);
+        <div class="flex items-center gap-3" style="margin-top:var(--space-4);">
+          <button class="btn btn-primary" id="save-settings-btn">Save</button>
+          <button class="btn btn-ghost" id="clear-key-btn">Remove Key</button>
+        </div>
 
-  // Event Listeners
-  const saveBtn = document.getElementById('settings-save-btn');
-  const clearBtn = document.getElementById('settings-clear-btn');
-  const keyInput = document.getElementById('settings-api-key');
+        <div class="mt-4 text-sm text-muted">
+          <strong>Tip:</strong> If you hit rate limits (HTTP 429) during Cambridge parsing or word lookup,
+          you will see a warning message suggesting you add your own key here.
+        </div>
+      </div>
+    </div>
+  `;
 
-  saveBtn.addEventListener('click', () => {
-    const val = keyInput.value.trim();
-    saveApiKey(val);
-    showToast('Settings saved successfully.', 'success');
+  document.getElementById('save-settings-btn')?.addEventListener('click', () => {
+    const input = document.getElementById('gemini-key-input');
+    const raw = input.value.trim();
+    const value = raw === maskKey(raw) ? settings.geminiApiKey : raw;
+
+    const next = { ...settings, geminiApiKey: value || null };
+    saveSettings(next);
+    input.value = value ? maskKey(value) : '';
+    alert('Settings saved. AI features will now use your personal Gemini key.');
   });
 
-  clearBtn.addEventListener('click', () => {
-    keyInput.value = '';
-    saveApiKey('');
-    showToast('API key cleared.', 'info');
+  document.getElementById('clear-key-btn')?.addEventListener('click', () => {
+    if (!confirm('Remove your Gemini API key from this browser?')) return;
+    const next = { ...settings, geminiApiKey: null };
+    saveSettings(next);
+    const input = document.getElementById('gemini-key-input');
+    if (input) input.value = '';
+    alert('Gemini API key removed. The app will fall back to the shared/demo key (more likely to hit rate limits).');
   });
 }
+
+function loadSettings() {
+  try {
+    return JSON.parse(localStorage.getItem('lexilearn_settings') || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveSettings(settings) {
+  try {
+    localStorage.setItem('lexilearn_settings', JSON.stringify(settings));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+function maskKey(key) {
+  if (!key) return '';
+  if (key.length <= 8) return '*'.repeat(key.length);
+  return `${key.slice(0, 4)}****${key.slice(-4)}`;
+}
+

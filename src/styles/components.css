@@ -498,3 +498,28 @@ select.input option {
     opacity: 1;
     transform: translateX(-50%) translateY(-8px);
 }
+
+/* ---- Loading Spinner ---- */
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.flashcard-image-container img {
+    opacity: 0;
+    transition: opacity 0.6s ease-in-out;
+}
+
+.flashcard-image-container img.loaded {
+    opacity: 1;
+}

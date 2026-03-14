@@ -1,242 +1,136 @@
-/* ============================================
-   LexiLearn — Add / Edit Word Page
-   ============================================ */
-
-import { getDecks, saveWord, getWordById } from '../data/store.js';
-import { navigateTo, getCurrentRoute } from '../router.js';
-import { lookupWord } from '../utils/api.js';
+import { db } from '../utils/supabase.js';
+import { navigateTo } from '../router.js';
 import { showToast } from '../components/Toast.js';
+import { lookupWord, buildTooltipHTML } from '../utils/wordLookup.js';
 import { escapeHtml } from '../utils/helpers.js';
 
-export function renderAddWord(container) {
-  // Parse query params
-  const hash = getCurrentRoute();
-  const qIdx = hash.indexOf('?');
-  const params = new URLSearchParams(qIdx >= 0 ? hash.slice(qIdx) : '');
-  const editId = params.get('edit');
-  const preselectedDeck = params.get('deck');
-  const isEdit = !!editId;
-  const existingWord = isEdit ? getWordById(editId) : null;
+export async function renderAddWord(container) {
+  let selectedDeckId = null;
+  let wordInfo = null;
 
-  const decks = getDecks();
-  const ew = existingWord || {};
+  container.innerHTML = `<div class="p-20 flex justify-center"><div class="spinner"></div></div>`;
 
-  container.innerHTML = `
-    <div class="animate-fade-in-up" style="max-width:720px;">
-      <button class="btn btn-ghost btn-sm" id="back-btn" style="margin-bottom:var(--space-6);">← Back</button>
+  try {
+    const decks = await db.decks.list();
 
-      <div style="margin-bottom:var(--space-8);">
-        <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;margin-bottom:var(--space-2);">${isEdit ? 'Edit Word' : 'Add New Word'}</h1>
-        <p style="color:#6b7280;font-size:var(--font-size-base);">${isEdit ? 'Update the word details and save your changes.' : 'Enter a new vocabulary word with meaning, example, and related words.'}</p>
-      </div>
+    container.innerHTML = `
+      <div class="animate-fade-in-up max-w-2xl mx-auto">
+        <div class="page-header mb-8">
+          <h1 class="text-3xl font-bold">➕ Add New Word</h1>
+          <p class="text-muted">Manually add a word or use AI lookup for rich information.</p>
+        </div>
 
-      <div class="card" style="padding:var(--space-8);">
-        <form id="word-form" class="flex flex-col gap-5">
-          <!-- Word + Auto-lookup -->
-          <div class="flex gap-4 items-end">
-            <div class="input-group" style="flex:1;">
-              <label>Word *</label>
-              <input class="input" id="word-input" value="${escapeHtml(ew.word || '')}" placeholder="e.g. abandon" required>
+        <div class="card p-8">
+          <div class="mb-6">
+            <label class="form-label">English Word</label>
+            <div class="flex gap-2">
+              <input type="text" id="word-input" class="input flex-1" placeholder="e.g. Sustainable">
+              <button class="btn btn-secondary" id="lookup-btn">🔍 AI Lookup</button>
             </div>
-            <button type="button" class="btn btn-secondary" id="lookup-btn" style="height:42px;">
-              🔍 Auto Lookup
-            </button>
           </div>
 
-          <!-- Phonetic + Audio -->
-          <div id="phonetic-section" class="flex items-center gap-4" style="display:${ew.phonetic ? 'flex' : 'none'};">
-            <span class="text-muted" id="phonetic-display">${escapeHtml(ew.phonetic || '')}</span>
-            <button type="button" class="btn btn-ghost btn-sm" id="play-audio-btn" style="display:${ew.audioUrl ? 'inline-flex' : 'none'};">🔊 Play</button>
-            <audio id="word-audio" src="${ew.audioUrl || ''}"></audio>
-          </div>
-
-          <!-- Part of Speech -->
-          <div class="input-group">
-            <label>Part of Speech</label>
-            <select class="input" id="pos-input">
-              <option value="">Select...</option>
-              ${['noun', 'verb', 'adjective', 'adverb', 'preposition', 'conjunction', 'pronoun', 'interjection', 'phrase'].map(pos =>
-                `<option value="${pos}" ${ew.partOfSpeech === pos ? 'selected' : ''}>${pos}</option>`
-              ).join('')}
+          <div class="mb-6">
+            <label class="form-label">Select Deck</label>
+            <select id="deck-select" class="input">
+              <option value="">-- No Deck --</option>
+              ${decks.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('')}
             </select>
           </div>
 
-          <!-- Meaning (Vietnamese) -->
-          <div class="input-group">
-            <label>Meaning (Vietnamese) *</label>
-            <input class="input" id="meaning-input" value="${escapeHtml(ew.meaning || '')}" placeholder="e.g. từ bỏ" required>
-          </div>
+          <div id="word-details" class="hidden animate-fade-in">
+            <div class="grid grid-2 gap-4 mb-6">
+              <div>
+                <label class="form-label">Meaning (VI)</label>
+                <input type="text" id="meaning-input" class="input" placeholder="Vietnamese meaning">
+              </div>
+              <div>
+                <label class="form-label">Part of Speech</label>
+                <input type="text" id="pos-input" class="input" placeholder="e.g. adjective">
+              </div>
+            </div>
+            
+            <div class="mb-6">
+              <label class="form-label">Explanation (EN)</label>
+              <textarea id="explanation-input" class="input" rows="3"></textarea>
+            </div>
 
-          <!-- English Explanation -->
-          <div class="input-group">
-            <label>English Explanation</label>
-            <textarea class="textarea" id="explanation-input" placeholder="e.g. to leave something permanently" rows="2">${escapeHtml(ew.explanation || '')}</textarea>
-          </div>
+            <div class="mb-8">
+              <label class="form-label">Example Sentence</label>
+              <textarea id="example-input" class="input" rows="2"></textarea>
+            </div>
 
-          <!-- Example Sentence -->
-          <div class="input-group">
-            <label>Example Sentence</label>
-            <input class="input" id="example-input" value="${escapeHtml(ew.example || '')}" placeholder="e.g. He abandoned the project.">
+            <button class="btn btn-primary w-full py-4 text-lg" id="save-word-btn">Save Word to Database</button>
           </div>
-
-          <!-- Example Meaning -->
-          <div class="input-group">
-            <label>Example Meaning</label>
-            <input class="input" id="example-meaning-input" value="${escapeHtml(ew.exampleMeaning || '')}" placeholder="e.g. Anh ấy đã từ bỏ dự án">
-          </div>
-
-          <!-- Synonyms -->
-          <div class="input-group">
-            <label>Synonyms <span class="text-muted text-sm">(comma separated)</span></label>
-            <input class="input" id="synonyms-input" value="${escapeHtml(ew.synonyms || '')}" placeholder="e.g. leave, quit, desert">
-          </div>
-
-          <!-- Antonyms -->
-          <div class="input-group">
-            <label>Antonyms <span class="text-muted text-sm">(comma separated)</span></label>
-            <input class="input" id="antonyms-input" value="${escapeHtml(ew.antonyms || '')}" placeholder="e.g. continue, persist">
-          </div>
-
-          <!-- Tags -->
-          <div class="input-group">
-            <label>Tags <span class="text-muted text-sm">(comma separated)</span></label>
-            <input class="input" id="tags-input" value="${escapeHtml(ew.tags || '')}" placeholder="e.g. IELTS, Writing, Academic">
-          </div>
-
-          <!-- Deck -->
-          <div class="input-group">
-            <label>Deck</label>
-            <select class="input" id="deck-input">
-              <option value="">No deck</option>
-              ${decks.map(d => `<option value="${d.id}" ${(ew.deckId || preselectedDeck) === d.id ? 'selected' : ''}>${escapeHtml(d.name)}</option>`).join('')}
-            </select>
-          </div>
-
-          <!-- Notes -->
-          <div class="input-group">
-            <label>Notes</label>
-            <textarea class="textarea" id="notes-input" placeholder="e.g. IELTS Writing useful word" rows="2">${escapeHtml(ew.notes || '')}</textarea>
-          </div>
-
-          <!-- Submit -->
-          <div class="flex gap-3" style="margin-top:var(--space-4);">
-            <button type="submit" class="btn btn-primary" style="flex:1;padding:var(--space-4);">
-              ${isEdit ? 'Update Word' : 'Add Word'}
-            </button>
-            ${!isEdit ? '<button type="button" class="btn btn-secondary" id="add-another-btn" style="flex:1;padding:var(--space-4);">Add & New</button>' : ''}
-          </div>
-        </form>
+        </div>
       </div>
-    </div>
-  `;
+    `;
 
-  let currentAudioUrl = ew.audioUrl || '';
+    const wordDetails = document.getElementById('word-details');
+    const lookupBtn = document.getElementById('lookup-btn');
 
-  // Back button
-  container.querySelector('#back-btn').addEventListener('click', () => {
-    window.history.back();
-  });
+    lookupBtn.addEventListener('click', async () => {
+      const word = document.getElementById('word-input').value.trim();
+      if (!word) return showToast('Enter a word first!', 'info');
 
-  // Auto-lookup
-  container.querySelector('#lookup-btn').addEventListener('click', async () => {
-    const word = document.getElementById('word-input').value.trim();
-    if (!word) return showToast('Enter a word first', 'info');
+      lookupBtn.disabled = true;
+      lookupBtn.innerHTML = '<div class="spinner-sm"></div> Searching...';
 
-    const btn = container.querySelector('#lookup-btn');
-    btn.textContent = '⏳ Looking up...';
-    btn.disabled = true;
-
-    const result = await lookupWord(word);
-
-    btn.textContent = '🔍 Auto Lookup';
-    btn.disabled = false;
-
-    if (!result) return showToast('Word not found in dictionary', 'error');
-
-    // Fill fields
-    if (result.phonetic) {
-      document.getElementById('phonetic-display').textContent = result.phonetic;
-      document.getElementById('phonetic-section').style.display = 'flex';
-    }
-    if (result.audioUrl) {
-      currentAudioUrl = result.audioUrl;
-      document.getElementById('word-audio').src = result.audioUrl;
-      document.getElementById('play-audio-btn').style.display = 'inline-flex';
-    }
-    if (result.meanings?.length > 0) {
-      const m = result.meanings[0];
-      if (m.partOfSpeech) document.getElementById('pos-input').value = m.partOfSpeech;
-      if (m.definition && !document.getElementById('explanation-input').value) {
-        document.getElementById('explanation-input').value = m.definition;
+      try {
+        wordInfo = await lookupWord(word);
+        if (wordInfo) {
+          document.getElementById('meaning-input').value = wordInfo.meaning_vi || '';
+          document.getElementById('pos-input').value = wordInfo.partOfSpeech || '';
+          document.getElementById('explanation-input').value = wordInfo.meaning_en || '';
+          document.getElementById('example-input').value = wordInfo.example || '';
+          wordDetails.classList.remove('hidden');
+          showToast(`Information found for "${word}"`, 'success');
+        } else {
+          showToast('Could not find information. Please fill manually.', 'info');
+          wordDetails.classList.remove('hidden');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+        wordDetails.classList.remove('hidden');
+      } finally {
+        lookupBtn.disabled = false;
+        lookupBtn.innerHTML = '🔍 AI Lookup';
       }
-      if (m.example && !document.getElementById('example-input').value) {
-        document.getElementById('example-input').value = m.example;
+    });
+
+    document.getElementById('save-word-btn').addEventListener('click', async () => {
+      const word = document.getElementById('word-input').value.trim();
+      const deck_id = document.getElementById('deck-select').value;
+      const meaning = document.getElementById('meaning-input').value.trim();
+      const pos = document.getElementById('pos-input').value.trim();
+      const explanation = document.getElementById('explanation-input').value.trim();
+      const example_sent = document.getElementById('example-input').value.trim();
+
+      if (!word || !meaning) return showToast('Word and meaning are required!', 'error');
+
+      const btn = document.getElementById('save-word-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        await db.words.create({
+          word,
+          deck_id: deck_id || null,
+          meaning,
+          pos,
+          explanation,
+          example_sent,
+          phonetic: wordInfo?.phonetic || ''
+        });
+        showToast(`"${word}" saved successfully!`, 'success');
+        navigateTo('/decks');
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Save Word to Database';
       }
-    }
-    if (result.synonyms.length > 0 && !document.getElementById('synonyms-input').value) {
-      document.getElementById('synonyms-input').value = result.synonyms.join(', ');
-    }
-    if (result.antonyms.length > 0 && !document.getElementById('antonyms-input').value) {
-      document.getElementById('antonyms-input').value = result.antonyms.join(', ');
-    }
+    });
 
-    showToast('Dictionary data loaded!');
-  });
-
-  // Play audio
-  container.querySelector('#play-audio-btn').addEventListener('click', () => {
-    const audio = document.getElementById('word-audio');
-    if (audio.src) audio.play();
-  });
-
-  // Form submit
-  const handleSave = (andNew = false) => {
-    const word = document.getElementById('word-input').value.trim();
-    const meaning = document.getElementById('meaning-input').value.trim();
-    if (!word) return showToast('Word is required', 'error');
-    if (!meaning) return showToast('Meaning is required', 'error');
-
-    const data = {
-      word,
-      meaning,
-      partOfSpeech: document.getElementById('pos-input').value,
-      explanation: document.getElementById('explanation-input').value.trim(),
-      example: document.getElementById('example-input').value.trim(),
-      exampleMeaning: document.getElementById('example-meaning-input').value.trim(),
-      synonyms: document.getElementById('synonyms-input').value.trim(),
-      antonyms: document.getElementById('antonyms-input').value.trim(),
-      tags: document.getElementById('tags-input').value.trim(),
-      deckId: document.getElementById('deck-input').value || null,
-      notes: document.getElementById('notes-input').value.trim(),
-      phonetic: document.getElementById('phonetic-display').textContent || '',
-      audioUrl: currentAudioUrl,
-    };
-
-    if (isEdit) {
-      data.id = editId;
-    }
-
-    saveWord(data);
-    showToast(isEdit ? 'Word updated!' : `"${word}" added!`);
-
-    if (andNew) {
-      // Reset form
-      document.getElementById('word-form').reset();
-      document.getElementById('phonetic-section').style.display = 'none';
-      document.getElementById('word-input').focus();
-      currentAudioUrl = '';
-    } else {
-      window.history.back();
-    }
-  };
-
-  container.querySelector('#word-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    handleSave(false);
-  });
-
-  container.querySelector('#add-another-btn')?.addEventListener('click', () => handleSave(true));
-
-  // Focus first input
-  setTimeout(() => document.getElementById('word-input')?.focus(), 100);
+  } catch (err) {
+    container.innerHTML = `<div class="p-8 text-red-500">Error: ${err.message}</div>`;
+  }
 }

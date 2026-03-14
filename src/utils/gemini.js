@@ -74,3 +74,55 @@ export async function extractVocabularyFromText(text) {
     throw error;
   }
 }
+
+/**
+ * Validates a user's answer against the target word using Gemini.
+ * @param {string} userInput - What the user typed.
+ * @param {string} targetWord - The correct word.
+ * @param {string} context - The sentence or definition used.
+ * @returns {Promise<Object>} - { isCorrect: boolean, feedback: string }
+ */
+export async function validateAnswer(userInput, targetWord, context) {
+  const apiKey = 'AIzaSyA-85K3L3BiJjpcu4Siu-xxQT0-dYXKBO8';
+  
+  const prompt = `
+    Context: "${context}"
+    Correct word: "${targetWord}"
+    User answer: "${userInput}"
+
+    Is the user's answer "close enough" to the correct word? 
+    Rules:
+    - If it's a minor typo (e.g., "happines" vs "happiness"), it's correct.
+    - If it's a synonym that fits perfectly in the context, it's correct.
+    - If it's the wrong part of speech but the right root (e.g., "happy" vs "happiness"), it's partially correct but consider it WRONG for strict learning unless it fits the context perfectly.
+    - Be strict but helpful.
+
+    Return a JSON object:
+    {
+      "isCorrect": boolean,
+      "feedback": "A short encouragement or correction in Vietnamese"
+    }
+    
+    Do not include markdown formatting.
+  `;
+
+  try {
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { response_mime_type: "application/json", temperature: 0.1 }
+      })
+    });
+
+    if (!response.ok) return { isCorrect: userInput.toLowerCase() === targetWord.toLowerCase(), feedback: "" };
+
+    const data = await response.json();
+    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return JSON.parse(resultText);
+  } catch (error) {
+    console.error('Validation Error:', error);
+    return { isCorrect: userInput.toLowerCase() === targetWord.toLowerCase(), feedback: "" };
+  }
+}
