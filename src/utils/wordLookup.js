@@ -3,14 +3,14 @@
    ============================================
    Provides rich word information via:
    1. localStorage cache (instant)
-   2. Gemini AI (detailed, with IELTS context)
-   3. Free Dictionary API (fallback)
+   2. Free Dictionary API (English definitions, phonetics, examples)
+   3. MyMemory Translate API (Vietnamese translations)
 */
 
 import { escapeHtml } from './helpers.js';
+import { db } from './supabase.js';
 
-const CACHE_KEY = 'lexilearn_word_cache';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const CACHE_KEY = 'lexilearn_word_cache_v3'; // Bumping version for new logic
 
 // Simple local VN meanings for some common IELTS words as a last-resort fallback
 const LOCAL_VI_MEANINGS = {
@@ -21,37 +21,46 @@ const LOCAL_VI_MEANINGS = {
   minority: 'thiểu số',
 };
 
-/**
- * Look up a word with caching and AI enrichment
- */
 export async function lookupWord(word, context = '') {
   const normalizedWord = word.toLowerCase().trim();
-  if (!normalizedWord || normalizedWord.length < 2) return null;
+  if (!normalizedWord) return null;
 
-  // 1. Check cache first
+  const isPhrase = normalizedWord.includes(' ');
+
+  // 1. Check local cache (Layer 1)
   const cached = getFromCache(normalizedWord);
-  if (cached && cached.meaning_vi && cached.meaning_vi !== 'Look up failed - Use Cloud/AI for VN meaning') return cached;
-
-  // 2. Try Gemini AI
-  try {
-    const result = await lookupViaGeminiWithRetry(normalizedWord, context);
-    if (result) {
-      saveToCache(normalizedWord, result);
-      return result;
-    }
-  } catch (err) {
-    console.warn('Gemini lookup failed:', err.message);
+  if (cached && cached.meaning_vi) {
+    const viRejects = ['Look up failed', 'AI rate limit', 'AI đang bị giới hạn', 'Lỗi kết nối'];
+    const isBadCache = viRejects.some(str => cached.meaning_vi.includes(str));
+    if (!isBadCache) return cached;
   }
 
-  // 3. Fallback to Free Dictionary API
+  // 2. Check Supabase DB Cache (Layer 2)
   try {
-    const result = await lookupViaFreeDictionary(normalizedWord);
-    if (result) {
-      saveToCache(normalizedWord, result);
-      return result;
+    const dbCached = await db.dictionary.get(normalizedWord);
+    if (dbCached && dbCached.meaning_vi) {
+      saveToCache(normalizedWord, dbCached); // populate local cache for next time
+      return dbCached;
     }
   } catch (err) {
-    console.warn('Free Dictionary lookup failed:', err.message);
+    console.warn("Supabase cache check failed", err);
+  }
+
+  // 3. Fallback to APIs (Layer 3)
+  let result = null;
+  if (isPhrase) {
+    result = await lookupPhraseViaAPI(normalizedWord);
+  } else {
+    result = await lookupViaPublicApis(normalizedWord);
+  }
+
+  if (result) {
+    // Save to both caches
+    saveToCache(normalizedWord, result);
+    try {
+      await db.dictionary.create(normalizedWord, result);
+    } catch(e) { } // Silent fail if DB setup is missing
+    return result;
   }
 
   // 4. Final local dummy fallback so tooltip is never completely empty
@@ -59,110 +68,103 @@ export async function lookupWord(word, context = '') {
 }
 
 /**
- * Look up word via Gemini AI with Retry for 429
+ * Look up phrase via MyMemory Translation API
  */
-async function lookupViaGeminiWithRetry(word, context, attempts = 2) {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) return null;
-
-  const prompt = `
-    Word: "${word}"
-    ${context ? `Context sentence: "${context}"` : ''}
-
-    Provide a JSON object with these fields:
-    - "word": "${word}"
-    - "meaning_vi": Common Vietnamese meaning (concise)
-    - "meaning_en": Clear English definition
-    - "meaning_en_vi": Vietnamese translation of the English definition
-    - "partOfSpeech": part of speech
-    - "phonetic": IPA pronunciation
-    - "synonyms": array of 3-4 synonyms
-    - "antonyms": array of 2 antonyms (if applicable, else empty array)
-    - "collocations": array of 4 common collocations
-    - "example": one clear example sentence using the word
-    - "ielts_tip": one short IELTS usage tip (in Vietnamese)
-    - "difficulty": CEFR level (e.g., B2, C1)
-
-    Return ONLY the JSON object. No markdown.
-  `;
-
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { response_mime_type: 'application/json', temperature: 0.1 }
-        })
-      });
-
-      if (!response.ok) {
-        // Simple retry for 429 with incremental backoff
-        if (response.status === 429 && i < attempts - 1) {
-          console.log(`Rate limited (429). Retrying in ${1000 * (i + 1)}ms...`);
-          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-          continue;
-        }
-        // For the last attempt, if still 429, return a special object so UI can show a helpful message
-        if (response.status === 429) {
-          return {
-            word,
-            meaning_vi: 'AI đang bị giới hạn lượt truy cập (rate limit). Hãy thử lại sau ít phút hoặc thêm API key riêng trong phần Settings.',
-            meaning_en: 'AI rate limit reached. Please try again later.',
-            meaning_en_vi: '',
-            partOfSpeech: '',
-            phonetic: '',
-            synonyms: [],
-            antonyms: [],
-            collocations: [],
-            example: '',
-            ielts_tip: '',
-            difficulty: '',
-          };
-        }
-        return null;
+async function lookupPhraseViaAPI(phrase) {
+  let meaning_vi = 'Lỗi kết nối dịch thuật.';
+  try {
+    const transResponse = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(phrase)}&langpair=en|vi`);
+    if (transResponse.ok) {
+      const transData = await transResponse.json();
+      if (transData.responseData?.translatedText && transData.responseData.translatedText.toLowerCase() !== phrase.toLowerCase()) {
+         meaning_vi = transData.responseData.translatedText;
+      } else {
+         meaning_vi = 'Chưa tìm thấy bản dịch phù hợp.';
       }
-
-      const data = await response.json();
-      let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) return null;
-      
-      // Clean text from markdown / code fences before parsing
-      text = text.replace(/```json\n?|```/g, '').trim();
-      return JSON.parse(text);
-    } catch (e) {
-      if (i === attempts - 1) throw e;
     }
+  } catch (e) {
+    console.warn('Translation API error:', e);
   }
-  return null;
+
+  if (meaning_vi === 'Lỗi kết nối dịch thuật.') return null;
+
+  return {
+    word: phrase,
+    meaning_vi: meaning_vi,
+    isPhrase: true // flag for UI to format differently
+  };
 }
 
 /**
- * Fallback: Free Dictionary API
+ * Look up word via Free Dictionary API and translate via MyMemory API
  */
-async function lookupViaFreeDictionary(word) {
-  const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-  if (!response.ok) return null;
+async function lookupViaPublicApis(word) {
+  let entries = [];
+  try {
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    if (response.ok) {
+      entries = await response.json();
+    }
+  } catch (e) {
+    console.warn('Dictionary API error:', e);
+  }
 
-  const [entry] = await response.json();
-  if (!entry) return null;
-
+  const entry = entries[0] || {};
   const firstMeaning = entry.meanings?.[0];
   const definition = firstMeaning?.definitions?.[0];
 
+  // Extract up to 3 distinct meanings/parts of speech
+  const meanings_list = [];
+  if (entry.meanings) {
+    for (const m of entry.meanings.slice(0, 3)) {
+      if (m.definitions && m.definitions.length > 0) {
+        meanings_list.push({
+          partOfSpeech: m.partOfSpeech || '',
+          definition: m.definitions[0].definition,
+          example: m.definitions[0].example || ''
+        });
+      }
+    }
+  }
+
+  // Fetch Vietnamese translation
+  let meaning_vi = LOCAL_VI_MEANINGS[word] || '';
+  if (!meaning_vi) {
+    try {
+      const transResponse = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|vi`);
+      if (transResponse.ok) {
+        const transData = await transResponse.json();
+        // Check if translation seems valid (not just echoing the english word back unless it's identical in VN)
+        if (transData.responseData?.translatedText && transData.responseData.translatedText.toLowerCase() !== word.toLowerCase()) {
+           meaning_vi = transData.responseData.translatedText;
+        } else {
+           meaning_vi = 'Chưa tìm thấy nghĩa Tiếng Việt phù hợp.';
+        }
+      }
+    } catch (e) {
+      console.warn('Translation API error:', e);
+      meaning_vi = 'Lỗi kết nối dịch thuật.';
+    }
+  }
+
+  if (!entry.word && meaning_vi === 'Lỗi kết nối dịch thuật.') {
+     return null; // Both failed completely
+  }
+
   return {
-    word: entry.word,
-    meaning_vi: LOCAL_VI_MEANINGS[word] || 'Tạm thời chưa có nghĩa tiếng Việt. Hãy bật AI hoặc tự thêm nghĩa.',
-    meaning_en: definition?.definition || '',
-    meaning_en_vi: '',
-    partOfSpeech: firstMeaning?.partOfSpeech || '',
+    word: entry.word || word,
+    meaning_vi: meaning_vi,
+    meanings_list: meanings_list,
+    meaning_en: definition?.definition || '', // Legacy fallback
+    meaning_en_vi: '', 
+    partOfSpeech: firstMeaning?.partOfSpeech || '', // Legacy fallback
     phonetic: entry.phonetic || entry.phonetics?.[0]?.text || '',
     synonyms: (firstMeaning?.synonyms || []).slice(0, 3),
     antonyms: (firstMeaning?.antonyms || []).slice(0, 2),
     collocations: [],
     example: definition?.example || '',
-    ielts_tip: '',
+    ielts_tip: '', // Cleaned up since no AI
+    difficulty: '',
   };
 }
 
@@ -174,7 +176,19 @@ export function buildTooltipHTML(info) {
 
   let html = '<div class="tooltip-content shadow-xl border-t-4 border-blue-500">';
 
-  // Word + phonetic + Tag
+  if (info.isPhrase) {
+    html += `<div class="tooltip-header" style="padding-bottom:var(--space-2);margin-bottom:var(--space-2);">
+      <div style="font-size:0.75rem;color:#6b7280;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Bản dịch ngữ cảnh</div>
+      <strong style="font-size:1.05rem;color:#111827;font-weight:700;line-height:1.4;">"${escapeHtml(info.word)}"</strong>
+    </div>`;
+    html += `<div style="padding:var(--space-3);background:#eff6ff;border-radius:8px;border-left:4px solid #3b82f6;">
+      <div style="color:#1d4ed8;font-size:0.95rem;font-weight:600;line-height:1.5;">🇻🇳 ${escapeHtml(info.meaning_vi)}</div>
+    </div>`;
+    html += '</div>';
+    return html;
+  }
+
+  // Word + phonetic (Tag removed from header as we will show it per meaning)
   html += `<div class="tooltip-header" style="border-bottom:1px solid #f3f4f6;padding-bottom:var(--space-2);margin-bottom:var(--space-2);">
     <div class="flex items-center justify-between">
       <strong style="font-size:1.1rem;color:#111827;font-weight:700;">${escapeHtml(info.word)}</strong>
@@ -182,23 +196,27 @@ export function buildTooltipHTML(info) {
     </div>
     <div class="flex items-center gap-2 mt-1">
       ${info.phonetic ? `<span style="color:#6b7280;font-size:var(--font-size-sm);">${escapeHtml(info.phonetic)}</span>` : ''}
-      ${info.partOfSpeech ? `<span style="background:#e0f2fe;color:#0369a1;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;text-transform:uppercase;">${escapeHtml(info.partOfSpeech)}</span>` : ''}
     </div>
   </div>`;
 
-  // Meanings block — ensure we always show something if we have at least EN or VI
-  if (info.meaning_vi || info.meaning_en || info.meaning_en_vi) {
-    html += `<div style="margin-bottom:var(--space-3);">`;
-    if (info.meaning_vi) {
-      html += `<div style="color:#1d4ed8;font-weight:600;font-size:0.95rem;">🇻🇳 ${escapeHtml(info.meaning_vi)}</div>`;
-    }
-    if (info.meaning_en) {
-      html += `<div style="margin-top:var(--space-1);color:#374151;font-size:var(--font-size-sm);line-height:1.4;">🇬🇧 ${escapeHtml(info.meaning_en)}</div>`;
-    }
-    if (info.meaning_en_vi) {
-      html += `<div style="margin-top:2px;color:#6b7280;font-size:0.75rem;font-style:italic;">(${escapeHtml(info.meaning_en_vi)})</div>`;
-    }
+  // Vietnamese translation header
+  if (info.meaning_vi) {
+    html += `<div style="margin-bottom:var(--space-2);color:#1d4ed8;font-weight:600;font-size:0.95rem;">🇻🇳 ${escapeHtml(info.meaning_vi)}</div>`;
+  }
+
+  // Multi-meanings block
+  if (info.meanings_list && info.meanings_list.length > 0) {
+    html += `<div style="margin-bottom:var(--space-3);display:flex;flex-direction:column;gap:6px;">`;
+    info.meanings_list.forEach((m, idx) => {
+      html += `<div style="color:#374151;font-size:0.85rem;line-height:1.4;">
+        <span style="display:inline-block;color:#0369a1;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;text-transform:uppercase;background:#e0f2fe;margin-right:2px;vertical-align:middle;">${escapeHtml(m.partOfSpeech)}</span>
+        <span style="vertical-align:middle;">${escapeHtml(m.definition)}</span>
+      </div>`;
+    });
     html += `</div>`;
+  } else if (info.meaning_en) {
+    // Legacy support for cached entries without meanings_list
+    html += `<div style="margin-bottom:var(--space-3);color:#374151;font-size:var(--font-size-sm);line-height:1.4;">🇬🇧 ${escapeHtml(info.meaning_en)}</div>`;
   }
 
   // Synonyms/Antonyms
@@ -225,8 +243,13 @@ export function buildTooltipHTML(info) {
     </div>`;
   }
 
-  // Example
-  if (info.example) {
+// Example
+  if (info.meanings_list && info.meanings_list[0] && info.meanings_list[0].example) {
+    html += `<div style="margin-bottom:var(--space-3);padding:var(--space-3);background:#f8fafc;border-radius:8px;border-left:4px solid #3b82f6;">
+      <span style="color:#64748b;font-size:10px;font-weight:700;">EXAMPLE SENTENCE</span>
+      <div style="font-size:var(--font-size-sm);color:#1e293b;font-style:italic;margin-top:2px;line-height:1.5;">"${escapeHtml(info.meanings_list[0].example)}"</div>
+    </div>`;
+  } else if (info.example) {
     html += `<div style="margin-bottom:var(--space-3);padding:var(--space-3);background:#f8fafc;border-radius:8px;border-left:4px solid #3b82f6;">
       <span style="color:#64748b;font-size:10px;font-weight:700;">EXAMPLE SENTENCE</span>
       <div style="font-size:var(--font-size-sm);color:#1e293b;font-style:italic;margin-top:2px;line-height:1.5;">"${escapeHtml(info.example)}"</div>
@@ -268,15 +291,7 @@ function saveToCache(word, data) {
   } catch { /* ignore */ }
 }
 
-function getGeminiApiKey() {
-  // Check if there's a user-stored key first
-  try {
-    const settings = JSON.parse(localStorage.getItem('lexilearn_settings') || '{}');
-    if (settings.geminiApiKey) return settings.geminiApiKey;
-  } catch { /* ignore */ }
-  // Fallback to hardcoded (may be expired)
-  return 'AIzaSyA-85K3L3BiJjpcu4Siu-xxQT0-dYXKBO8';
-}
+// Removed getting Gemini api key since it is not used in this file anymore
 
 // Minimal info builder used as a final fallback so tooltips never appear completely broken
 function buildMinimalInfo(word) {

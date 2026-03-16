@@ -2,6 +2,7 @@ import { db } from '../utils/supabase.js';
 import { getMasteryDistribution } from '../data/srs.js';
 import { navigateTo } from '../router.js';
 import { percent, escapeHtml } from '../utils/helpers.js';
+import { toSlug } from '../utils/url.js';
 
 export async function renderDashboard(container) {
   // Show loading state initially
@@ -102,7 +103,7 @@ export async function renderDashboard(container) {
               const mastered = deckWords.filter(w => (w.srs_level || 0) >= 5).length;
               const progress = percent(mastered, totalWords);
               return `
-                <div class="deck-card-modern animate-fade-in-up" data-deck-id="${deck.id}">
+                <div class="deck-card-modern animate-fade-in-up" data-deck-slug="${toSlug(deck.name)}">
                   <div class="deck-card-header">
                     <h3 class="deck-card-title">${escapeHtml(deck.name)}</h3>
                     ${deckDue > 0 ? `<span class="deck-badge-due">${deckDue}</span>` : `<span class="deck-badge-done">✓</span>`}
@@ -130,7 +131,7 @@ export async function renderDashboard(container) {
       if (decks.length > 0) {
         // Just pick the first deck with due words for now
         const best = decks.find(d => words.some(w => w.deck_id === d.id && (!w.next_review || new Date(w.next_review) <= now))) || decks[0];
-        navigateTo(`/study/${best.id}`);
+        navigateTo(`/study/${toSlug(best.name)}`);
       } else {
         navigateTo('/study/all');
       }
@@ -140,10 +141,10 @@ export async function renderDashboard(container) {
     container.querySelector('#dash-view-decks')?.addEventListener('click', () => navigateTo('/decks'));
     container.querySelector('#dash-create-deck-btn')?.addEventListener('click', () => navigateTo('/decks'));
 
-    container.querySelectorAll('.deck-card').forEach(card => {
+    container.querySelectorAll('.deck-card-modern').forEach(card => {
       card.addEventListener('click', () => {
-        const id = card.dataset.deckId;
-        navigateTo(`/deck/${id}`);
+        const slug = card.dataset.deckSlug;
+        navigateTo(`/deck/${slug}`);
       });
     });
 

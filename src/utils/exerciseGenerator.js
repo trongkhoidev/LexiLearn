@@ -93,6 +93,5 @@ function getGeminiApiKey() {
     const settings = JSON.parse(localStorage.getItem('lexilearn_settings') || '{}');
     if (settings.geminiApiKey) return settings.geminiApiKey;
   } catch { /* ignore */ }
-  // Fallback to hardcoded (may be blocked)
-  return 'AIzaSyA-85K3L3BiJjpcu4Siu-xxQT0-dYXKBO8';
+  return 'AIzaSyDv5yQ04GH5gqZqIjYGUoSHuHBn-i5O-0M';
 }

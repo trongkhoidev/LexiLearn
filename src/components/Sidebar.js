@@ -12,16 +12,8 @@ const NAV_ITEMS = [
   { label: 'STUDY', items: [
     { icon: '📚', text: 'My Decks', route: '/decks' },
     { icon: '📖', text: 'Quick Review', route: '/search' },
-    { icon: '✨', text: 'AI Flashcard', route: '/ai-flashcard' },
     { icon: '📄', text: 'Reading Practice', route: '/reading' },
     { icon: '🎯', text: 'Cambridge Tests', route: '/cambridge' },
-  ]},
-  { label: 'MANAGE', items: [
-    { icon: '➕', text: 'Add Word', route: '/add-word' },
-  ]},
-  { label: 'INSIGHTS', items: [
-    { icon: '📊', text: 'Statistics', route: '/stats' },
-    { icon: '⚙️', text: 'Settings', route: '/settings' },
   ]},
 ];
 

@@ -3,13 +3,17 @@ import { navigateTo } from '../router.js';
 import { showModal } from '../components/Modal.js';
 import { showToast } from '../components/Toast.js';
 import { percent } from '../utils/helpers.js';
+import { toSlug } from '../utils/url.js';
 
 export async function renderDeckList(container) {
   container.innerHTML = `<div class="flex items-center justify-center" style="min-height:200px;"><div class="spinner"></div></div>`;
 
   const render = async () => {
     try {
-      const decks = await db.decks.list();
+      const [decks, words] = await Promise.all([
+        db.decks.list(),
+        db.words.list()
+      ]);
 
       container.innerHTML = `
         <div class="animate-fade-in-up">
@@ -31,10 +35,10 @@ export async function renderDeckList(container) {
           ` : `
             <div class="grid grid-3 stagger">
               ${decks.map(deck => {
-                const totalWords = deck.word_count || 0;
+                const totalWords = words.filter(w => w.deck_id === deck.id).length;
                 const progress = 0; // Simplified for now, will add aggregate stats later
                 return `
-                  <div class="card card-interactive animate-fade-in-up" data-deck-id="${deck.id}" style="cursor:pointer;display:flex;flex-direction:column;">
+                <div class="card card-interactive animate-fade-in-up" data-deck-slug="${toSlug(deck.name)}" style="cursor:pointer;display:flex;flex-direction:column;">
                     <div class="flex items-center justify-between" style="margin-bottom:var(--space-4);">
                       <div>
                         <h3 style="font-size:var(--font-size-md);font-weight:600;color:#1f2937;margin-bottom:var(--space-1);">${deck.name}</h3>
@@ -65,37 +69,47 @@ export async function renderDeckList(container) {
   };
 
   const setupEvents = (decks) => {
-    container.querySelectorAll('[data-deck-id]').forEach(card => {
+    container.querySelectorAll('[data-deck-slug]').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.edit-deck-btn') || e.target.closest('.delete-deck-btn')) return;
-        navigateTo(`/deck/${card.dataset.deckId}`);
+        navigateTo(`/deck/${card.dataset.deckSlug}`);
       });
     });
 
     const openCreateModal = () => {
       const modal = showModal('Create New Deck', `
-        <div class="flex flex-col gap-4">
+        <form id="create-deck-form" class="flex flex-col gap-4">
           <div class="input-group">
             <label>Deck Name *</label>
-            <input class="input" id="deck-name-input" placeholder="e.g. IELTS Vocabulary" required>
+            <input class="input" id="deck-name-input" placeholder="e.g. IELTS Vocabulary" required autofocus>
           </div>
           <div class="input-group">
             <label>Description</label>
             <textarea class="textarea" id="deck-desc-input" placeholder="What this deck is about..." rows="3"></textarea>
           </div>
-          <button class="btn btn-primary" id="save-deck-btn" style="margin-top:var(--space-2);">Create Deck</button>
-        </div>
+          <button type="submit" class="btn btn-primary" style="margin-top:var(--space-2);">Create Deck</button>
+        </form>
       `);
 
-      document.getElementById('save-deck-btn')?.addEventListener('click', async () => {
+      document.getElementById('create-deck-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = e.target.querySelector('button[type="submit"]');
         const name = document.getElementById('deck-name-input')?.value?.trim();
         if (!name) return showToast('Please enter a deck name', 'error');
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="spinner-sm"></div> Creating...';
+
         try {
           await db.decks.create({ name, description: document.getElementById('deck-desc-input')?.value?.trim() });
           modal.close();
           showToast(`Deck "${name}" created!`);
           render();
-        } catch (e) { showToast(e.message, 'error'); }
+        } catch (e) { 
+          showToast(e.message, 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Deck';
+        }
       });
     };
 
@@ -108,18 +122,33 @@ export async function renderDeckList(container) {
         const deckId = btn.dataset.id;
         const deck = decks.find(d => d.id === deckId);
         const modal = showModal('Edit Deck', `
-          <div class="flex flex-col gap-4">
+          <form id="edit-deck-form" class="flex flex-col gap-4">
             <div class="input-group">
               <label>Deck Name *</label>
-              <input class="input" id="edit-deck-name" value="${deck.name}">
+              <input class="input" id="edit-deck-name" value="${deck.name}" required autofocus>
             </div>
-            <button class="btn btn-primary" id="update-deck-btn">Update</button>
-          </div>
+            <button type="submit" class="btn btn-primary" id="update-deck-btn">Update</button>
+          </form>
         `);
-        document.getElementById('update-deck-btn').onclick = async () => {
-          await db.decks.update(deckId, { name: document.getElementById('edit-deck-name').value });
-          modal.close(); render();
-        };
+        document.getElementById('edit-deck-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const submitBtn = e.target.querySelector('button[type="submit"]');
+          const name = document.getElementById('edit-deck-name').value?.trim();
+          if (!name) return showToast('Please enter a deck name', 'error');
+
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<div class="spinner-sm"></div> Updating...';
+
+          try {
+            await db.decks.update(deckId, { name });
+            modal.close(); 
+            render();
+          } catch (e) {
+            showToast(e.message, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Update';
+          }
+        });
       });
     });
 

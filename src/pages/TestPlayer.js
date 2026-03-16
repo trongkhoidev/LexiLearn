@@ -21,7 +21,7 @@ export function renderTestPlayer(container, params) {
 
   const loadTestData = async () => {
     try {
-      testData = await db.books.getTree(testId);
+      testData = await db.tests.get(testId);
       if (!testData) throw new Error('Test not found in cloud database');
       renderLayout();
     } catch (err) {
@@ -102,6 +102,78 @@ export function renderTestPlayer(container, params) {
       <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:2rem;">${escapeHtml(passage.title)}</h2>
       <div class="reading-content-test">${passage.content || 'Content not available'}</div>
     `;
+
+    renderQuestions(passage.questions || []);
+  };
+
+  const renderQuestions = (questions) => {
+    const area = document.getElementById('questions-area');
+    if (!area) return;
+
+    if (questions.length === 0) {
+      area.innerHTML = `<div class="card" style="padding:var(--space-6);text-align:center;color:#6b7280;">Questions for this section will appear here shortly.</div>`;
+      return;
+    }
+
+    area.innerHTML = `
+      <h3 style="font-weight:700;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;">
+        📝 Questions 1–${questions.length}
+      </h3>
+      <div class="questions-list">
+        ${questions.map(q => `
+          <div class="question-item card" style="padding:1.5rem;margin-bottom:1rem;" data-qid="${q.id}">
+            <p style="font-weight:600;margin-bottom:1rem;">${q.question_num}. ${escapeHtml(q.text)}</p>
+            ${renderQuestionOptions(q)}
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    setupQuestionEvents();
+  };
+
+  const renderQuestionOptions = (q) => {
+    if (q.type === 'mcq' && q.options) {
+      return `
+        <div class="flex flex-col gap-2">
+          ${q.options.map((opt, i) => {
+            const letter = ['A', 'B', 'C', 'D'][i] || i;
+            const checked = answers[q.id] === letter;
+            return `
+              <label class="mcq-option ${checked ? 'selected' : ''}" data-qid="${q.id}" data-val="${letter}">
+                <input type="radio" name="q-${q.id}" value="${letter}" ${checked ? 'checked' : ''} style="display:none;" />
+                <span class="option-letter">${letter}</span>
+                <span class="option-text">${escapeHtml(opt)}</span>
+              </label>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+    return `<input type="text" class="input question-input" placeholder="Type answer..." data-qid="${q.id}" value="${answers[q.id] || ''}" />`;
+  };
+
+  const setupQuestionEvents = () => {
+    container.querySelectorAll('.mcq-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const qid = opt.dataset.qid;
+        const val = opt.dataset.val;
+        answers[qid] = val;
+        
+        // Update UI
+        container.querySelectorAll(`.mcq-option[data-qid="${qid}"]`).forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        
+        saveProgress('in_progress');
+      });
+    });
+
+    container.querySelectorAll('.question-input').forEach(input => {
+      input.addEventListener('change', () => {
+        answers[input.dataset.qid] = input.value;
+        saveProgress('in_progress');
+      });
+    });
   };
 
   const startTimer = () => {
@@ -219,6 +291,47 @@ export function renderTestPlayer(container, params) {
         user-select: text;
         font-family: serif;
         font-size: 1.15rem;
+      }
+      .mcq-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #ffffff;
+      }
+      .mcq-option:hover {
+        border-color: #3B82F6;
+        background: #eff6ff;
+      }
+      .mcq-option.selected {
+        border-color: #3B82F6;
+        background: #3B82F6;
+        color: #ffffff;
+      }
+      .option-letter {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3f4f6;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: #374151;
+      }
+      .mcq-option.selected .option-letter {
+        background: rgba(255,255,255,0.2);
+        color: #ffffff;
+      }
+      .question-input {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
       }
     `;
     document.head.appendChild(style);
