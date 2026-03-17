@@ -6,6 +6,7 @@
 import { escapeHtml, renderEmptyState } from '../../utils/helpers.js';
 import { navigateTo } from '../../router.js';
 import { signOut } from '../../utils/supabase.js';
+import { renderIcon } from '../../utils/icons.js';
 
 export function renderTeacherDashboard(container, user, data) {
   const { classes, assignments } = data;
@@ -58,12 +59,12 @@ export function renderTeacherDashboard(container, user, data) {
               <h3 class="font-bold">Recent Classrooms</h3>
               <button class="btn btn-ghost btn-xs text-blue-600" id="dash-view-classes-btn">View All →</button>
            </div>
-           ${classes.length === 0 ? renderEmptyState({ icon: '🏫', title: 'No Classes', message: 'Create your first classroom to start assigning work.' }) : `
+           ${classes.length === 0 ? renderEmptyState({ icon: renderIcon('classrooms', 24), title: 'No Classes', message: 'Create your first classroom to start assigning work.' }) : `
              <div class="space-y-4">
                 ${classes.slice(0, 3).map(c => `
                   <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer class-item" data-id="${c.id}">
                      <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-lg bg-blue-100 flex-center text-blue-600 shadow-sm">🎓</div>
+                        <div class="w-10 h-10 rounded-lg bg-blue-100 flex-center text-blue-600 shadow-sm" style="color: var(--color-blue); display: flex; align-items: center; justify-content: center;">${renderIcon('classrooms', 16)}</div>
                         <div>
                            <div class="font-bold text-sm">${escapeHtml(c.title)}</div>
                            <div class="text-xxs text-muted font-bold uppercase tracking-widest mt-1">Target: Band ${c.level_band_min} - ${c.level_band_max}</div>
@@ -80,22 +81,22 @@ export function renderTeacherDashboard(container, user, data) {
            <h3 class="font-bold mb-6">Educator Toolbox</h3>
            <div class="grid grid-2 gap-4">
               <button class="flex flex-col items-center justify-center p-6 bg-blue-50 hover:bg-blue-100 rounded-2xl border border-blue-100 transition-all hover-lift" onclick="navigateTo('/materials')">
-                 <div class="text-3xl mb-3">📂</div>
+                 <div style="color: var(--color-blue); margin-bottom: 12px;">${renderIcon('materials', 28)}</div>
                  <div class="text-xs font-black uppercase tracking-widest text-blue-600">Materials</div>
                  <div class="text-[10px] text-blue-400 mt-1">Resources & Files</div>
               </button>
               <button class="flex flex-col items-center justify-center p-6 bg-pink-50 hover:bg-pink-100 rounded-2xl border border-pink-100 transition-all hover-lift" onclick="navigateTo('/grading-hub')">
-                 <div class="text-3xl mb-3">📝</div>
+                 <div style="color: #ec4899; margin-bottom: 12px;">${renderIcon('grading', 28)}</div>
                  <div class="text-xs font-black uppercase tracking-widest text-pink-600">Grading</div>
                  <div class="text-[10px] text-pink-400 mt-1">Pending Reviews</div>
               </button>
               <button class="flex flex-col items-center justify-center p-6 bg-green-50 hover:bg-green-100 rounded-2xl border border-green-100 transition-all hover-lift" onclick="navigateTo('/decks')">
-                 <div class="text-3xl mb-3">📚</div>
+                 <div style="color: #16a34a; margin-bottom: 12px;">${renderIcon('decks', 28)}</div>
                  <div class="text-xs font-black uppercase tracking-widest text-green-600">Vocabulary</div>
                  <div class="text-[10px] text-green-400 mt-1">Deck Builder</div>
               </button>
               <button class="flex flex-col items-center justify-center p-6 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-100 transition-all hover-lift" onclick="navigateTo('/settings')">
-                 <div class="text-3xl mb-3">⚙️</div>
+                 <div style="color: #666; margin-bottom: 12px;">${renderIcon('settings', 28)}</div>
                  <div class="text-xs font-black uppercase tracking-widest text-gray-600">API Config</div>
                  <div class="text-[10px] text-gray-400 mt-1">AI Settings</div>
               </button>

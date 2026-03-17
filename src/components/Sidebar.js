@@ -4,25 +4,26 @@
 
 import { navigateTo, getCurrentRoute } from '../router.js';
 import { db, getCurrentUser } from '../utils/supabase.js';
+import { renderIcon } from '../utils/icons.js';
 
 const NAV_ITEMS = [
   { label: 'HOME', items: [
-    { icon: '🏠', text: 'Dashboard', route: '/dashboard' },
+    { icon: 'dashboard', text: 'Dashboard', route: '/dashboard' },
   ]},
   { label: 'TEACHER', role: 'teacher', items: [
-    { icon: '🏫', text: 'Classrooms', route: '/classes' },
-    { icon: '📂', text: 'Materials', route: '/materials' },
-    { icon: '⚖️', text: 'Grading Hub', route: '/grading-hub' },
+    { icon: 'classrooms', text: 'Classrooms', route: '/classes' },
+    { icon: 'materials', text: 'Materials', route: '/materials' },
+    { icon: 'grading', text: 'Grading Hub', route: '/grading-hub' },
   ]},
   { label: 'MY LEARNING', role: 'student', items: [
-    { icon: '📝', text: 'My Assignments', route: '/my-assignments' },
-    { icon: '🖥️', text: 'Personal Desk', route: '/personal-desk' },
+    { icon: 'assignments', text: 'My Assignments', route: '/my-assignments' },
+    { icon: 'desk', text: 'Personal Desk', route: '/personal-desk' },
   ]},
   { label: 'STUDY', items: [
-    { icon: '📚', text: 'My Decks', route: '/decks' },
-    { icon: '📖', text: 'Quick Review', route: '/search' },
-    { icon: '📄', text: 'Reading Practice', route: '/reading' },
-    { icon: '🎯', text: 'Cambridge Tests', route: '/cambridge' },
+    { icon: 'decks', text: 'My Decks', route: '/decks' },
+    { icon: 'search', text: 'Quick Review', route: '/search' },
+    { icon: 'reading', text: 'Reading Practice', route: '/reading' },
+    { icon: 'test', text: 'Cambridge Tests', route: '/cambridge' },
   ]},
 ];
 
@@ -59,7 +60,7 @@ function renderBase(sidebar, current, dueCount) {
         ${section.items.map(item => `
           <a class="nav-link ${current === item.route ? 'active' : ''}"
              data-route="${item.route}" href="#${item.route}">
-            <span class="nav-icon">${item.icon}</span>
+            <span class="nav-icon">${renderIcon(item.icon, 20)}</span>
             <span>${item.text}</span>
             ${item.route === '/dashboard' && dueCount > 0 ? `<span class="badge badge-accent" style="margin-left:auto">${dueCount}</span>` : ''}
           </a>
@@ -69,7 +70,7 @@ function renderBase(sidebar, current, dueCount) {
     <div class="sidebar-footer">
       <div class="flex items-center justify-between" style="position:relative;">
         <div class="notification-bell" id="notif-bell">
-          🔔
+          ${renderIcon('notification', 20)}
           <span class="notification-badge hidden" id="notif-badge">0</span>
           <div class="notification-dropdown" id="notif-dropdown">
             <div class="notification-header">
@@ -87,7 +88,7 @@ function renderBase(sidebar, current, dueCount) {
         </div>
       </div>
       <div class="mt-4 pt-4 border-t border-gray-100 italic" style="font-size:0.6rem;">
-        LexiLearn v1.0 — Learn Smart 🧠
+        LexiLearn v1.0 — Learn Smart
       </div>
     </div>
   `;

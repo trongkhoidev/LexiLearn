@@ -7,6 +7,7 @@ import { escapeHtml, renderEmptyState, percent } from '../../utils/helpers.js';
 import { navigateTo } from '../../router.js';
 import { signOut } from '../../utils/supabase.js';
 import { toSlug } from '../../utils/url.js';
+import { renderIcon } from '../../utils/icons.js';
 
 export function renderStudentDashboard(container, user, words, dueWords, studiedToday, mastery, data) {
   const { submissions, desks, calculatedBand, xp, streak } = data;
@@ -27,14 +28,14 @@ export function renderStudentDashboard(container, user, words, dueWords, studied
           </p>
           <div class="flex items-center gap-6">
              <div class="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-2xl border border-white/20">
-                <span class="text-xl">🔥</span>
+                <div style="color: white; display: flex; align-items: center; justify-content: center;">${renderIcon('check', 20)}</div>
                 <div>
                   <div class="text-lg font-black leading-none">${streak}</div>
                   <div class="text-[10px] font-bold uppercase tracking-widest text-blue-200">Day Streak</div>
                 </div>
              </div>
              <div class="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-2xl border border-white/20">
-                <span class="text-xl">⚡</span>
+                <div style="color: white; display: flex; align-items: center; justify-content: center;">${renderIcon('stats', 20)}</div>
                 <div>
                   <div class="text-lg font-black leading-none">${xp}</div>
                   <div class="text-[10px] font-bold uppercase tracking-widest text-blue-200">Total XP</div>
@@ -123,22 +124,22 @@ export function renderStudentDashboard(container, user, words, dueWords, studied
           <h3 class="font-bold mb-6">Quick Access</h3>
           <div class="grid grid-2 gap-4">
             <button class="flex flex-col items-center justify-center p-6 bg-blue-50 hover:bg-blue-100 rounded-2xl border border-blue-100 transition-all hover-lift" onclick="navigateTo('/decks')">
-              <div class="text-3xl mb-3">📚</div>
+              <div style="color: var(--color-blue); margin-bottom: 12px;">${renderIcon('decks', 28)}</div>
               <div class="text-xs font-black uppercase tracking-widest text-blue-600">My Decks</div>
               <div class="text-[10px] text-blue-400 mt-1">Manage Vocabulary</div>
             </button>
             <button class="flex flex-col items-center justify-center p-6 bg-pink-50 hover:bg-pink-100 rounded-2xl border border-pink-100 transition-all hover-lift" onclick="navigateTo('/my-assignments')">
-              <div class="text-3xl mb-3">📝</div>
+              <div style="color: #ec4899; margin-bottom: 12px;">${renderIcon('assignments', 28)}</div>
               <div class="text-xs font-black uppercase tracking-widest text-pink-600">Assignments</div>
               <div class="text-[10px] text-pink-400 mt-1">View Tasks</div>
             </button>
             <button class="flex flex-col items-center justify-center p-6 bg-green-50 hover:bg-green-100 rounded-2xl border border-green-100 transition-all hover-lift" onclick="navigateTo('/personal-desk')">
-              <div class="text-3xl mb-3">📌</div>
+              <div style="color: #16a34a; margin-bottom: 12px;">${renderIcon('desk', 28)}</div>
               <div class="text-xs font-black uppercase tracking-widest text-green-600">My Desk</div>
               <div class="text-[10px] text-green-400 mt-1">Saved Materials</div>
             </button>
             <button class="flex flex-col items-center justify-center p-6 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-100 transition-all hover-lift" onclick="navigateTo('/settings')">
-              <div class="text-3xl mb-3">⚙️</div>
+              <div style="color: #666; margin-bottom: 12px;">${renderIcon('settings', 28)}</div>
               <div class="text-xs font-black uppercase tracking-widest text-gray-600">Settings</div>
               <div class="text-[10px] text-gray-400 mt-1">Profile & Preferences</div>
             </button>

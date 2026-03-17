@@ -14,6 +14,7 @@
   --color-bg-tertiary: hsl(var(--h-blue), 10%, 96%);
   --color-bg-card: hsl(0, 0%, 100%);
   --color-bg-glass: hsla(0, 0%, 100%, 0.8);
+  --color-bg-hover: hsl(var(--h-blue), 10%, 96%);
 
   --color-border: hsl(var(--h-blue), 10%, 91%);
   --color-border-hover: hsl(var(--h-blue), 10%, 85%);
@@ -28,6 +29,7 @@
   --color-blue-dark: hsl(var(--h-blue), 91%, 45%);
   --color-accent: var(--color-blue);
   --color-accent-light: hsla(var(--h-blue), 91%, 60%, 0.1);
+  --color-accent-hover: var(--color-blue-dark);
 
   --color-green: hsl(var(--h-green), 84%, 39%);
   --color-yellow: hsl(var(--h-yellow), 93%, 50%);
@@ -53,19 +55,30 @@
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 800;
+  --font-weight-extrabold: 900;
   /* Standardized bold to 800 for high contrast */
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
 
   /* ---- Spacing & Layout ---- */
   --space-2: 0.5rem;
+  --space-3: 0.75rem;
   --space-4: 1rem;
+  --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
+  --space-10: 2.5rem;
 
   --border-radius-sm: 8px;
   --border-radius: 12px;
   --border-radius-lg: 16px;
   --border-radius-full: 9999px;
 
+  /* ---- Layout Dimensions ---- */
+  --sidebar-width: 260px;
+  
   /* ---- Interactive (44px Rule) ---- */
   --click-target-min: 44px;
 

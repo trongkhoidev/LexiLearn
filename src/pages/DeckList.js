@@ -4,6 +4,7 @@ import { showModal } from '../components/Modal.js';
 import { showToast } from '../components/Toast.js';
 import { renderSkeleton, renderEmptyState, escapeHtml } from '../utils/helpers.js';
 import { toSlug } from '../utils/url.js';
+import { renderIcon } from '../utils/icons.js';
 
 export async function renderDeckList(container) {
   // Initial skeleton state
@@ -33,7 +34,10 @@ export async function renderDeckList(container) {
         <div class="animate-fade-in-up" style="max-width:1100px;margin:0 auto;">
           <div class="page-header flex-between flex-wrap gap-4 mb-8">
             <div>
-              <h1>📚 Vocabulary Decks</h1>
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="color: var(--color-accent);">${renderIcon('decks', 28)}</div>
+                <h1 style="margin: 0;">Vocabulary Decks</h1>
+              </div>
               <p>Manage your word collections and track your mastery progress.</p>
             </div>
             <button class="btn btn-primary shadow-lg" id="create-deck-btn">+ Create New Deck</button>
@@ -42,7 +46,7 @@ export async function renderDeckList(container) {
           <div class="divider"></div>
 
           ${decks.length === 0 ? renderEmptyState({
-            icon: '📂',
+            icon: renderIcon('materials', 32),
             title: 'No decks found',
             message: 'Start by creating your first deck. Your collections are synced across all your devices.',
             actionHtml: `<button class="btn btn-primary" id="empty-create-btn">Create Your First Deck</button>`
@@ -57,10 +61,10 @@ export async function renderDeckList(container) {
                   <div class="card card-interactive hover-lift flex flex-col justify-between h-full" data-deck-slug="${toSlug(deck.name)}">
                     <div>
                       <div class="flex-between mb-4">
-                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex-center text-xl shadow-sm">📘</div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex-center shadow-sm" style="color: var(--color-blue);">${renderIcon('decks', 20)}</div>
                         <div class="flex gap-1">
-                          <button class="btn btn-ghost btn-xs edit-deck-btn p-1" data-id="${deck.id}" title="Edit Name">✏️</button>
-                          <button class="btn btn-ghost btn-xs delete-deck-btn p-1" data-id="${deck.id}" title="Delete Deck">🗑️</button>
+                          <button class="btn btn-ghost btn-xs edit-deck-btn p-1" data-id="${deck.id}" title="Edit Name" style="color: var(--color-blue);">${renderIcon('edit', 16)}</button>
+                          <button class="btn btn-ghost btn-xs delete-deck-btn p-1" data-id="${deck.id}" title="Delete Deck" style="color: var(--color-red);">${renderIcon('delete', 16)}</button>
                         </div>
                       </div>
                       <h3 class="text-lg font-bold mb-2">${escapeHtml(deck.name)}</h3>

@@ -62,8 +62,9 @@ body::after {
 #main-content {
     flex: 1;
     margin-left: var(--sidebar-width);
-    padding: var(--space-8) var(--space-10);
-    max-width: calc(100vw - var(--sidebar-width));
+    padding: var(--space-8) var(--space-8);
+    width: calc(100% - var(--sidebar-width));
+    overflow-x: hidden;
     transition: margin-left var(--transition-base);
 }
 
