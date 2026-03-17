@@ -1,99 +1,82 @@
 /* ============================================
-   LexiLearn Design Tokens
+   LexiLearn Design Tokens — Refined & Optimized
    ============================================ */
 
 :root {
-  /* ---- Colors ---- */
-  --color-bg-primary: #f8f9fa;
-  --color-bg-secondary: #ffffff;
-  --color-bg-tertiary: #f3f4f6;
-  --color-bg-card: #ffffff;
-  --color-bg-card-hover: #fafbfc;
-  --color-bg-glass: rgba(255, 255, 255, 0.8);
-  --color-bg-input: #f3f4f6;
+  /* ---- Colors (HSL for consistency) ---- */
+  --h-blue: 217;
+  --h-green: 161;
+  --h-red: 0;
+  --h-yellow: 38;
 
-  --color-border: #e5e7eb;
-  --color-border-hover: #d1d5db;
-  --color-border-focus: rgba(59, 130, 246, 0.5);
+  --color-bg-primary: hsl(var(--h-blue), 15%, 98%);
+  --color-bg-secondary: hsl(0, 0%, 100%);
+  --color-bg-tertiary: hsl(var(--h-blue), 10%, 96%);
+  --color-bg-card: hsl(0, 0%, 100%);
+  --color-bg-glass: hsla(0, 0%, 100%, 0.8);
 
-  --color-text-primary: #1f2937;
-  --color-text-secondary: #6b7280;
-  --color-text-muted: #9ca3af;
-  --color-text-inverse: #ffffff;
+  --color-border: hsl(var(--h-blue), 10%, 91%);
+  --color-border-hover: hsl(var(--h-blue), 10%, 85%);
+  --color-border-focus: hsla(var(--h-blue), 91%, 60%, 0.4);
 
-  --color-accent: #3B82F6;
-  --color-accent-hover: #2563eb;
-  --color-accent-light: rgba(59, 130, 246, 0.1);
+  --color-text-primary: hsl(var(--h-blue), 25%, 15%);
+  --color-text-secondary: hsl(var(--h-blue), 15%, 45%);
+  --color-text-muted: hsl(var(--h-blue), 10%, 65%);
+  --color-text-inverse: hsl(0, 0%, 100%);
 
-  --color-blue: #3B82F6;
-  --color-green: #10b981;
-  --color-green-light: rgba(16, 185, 129, 0.1);
-  --color-yellow: #f59e0b;
-  --color-yellow-light: rgba(245, 158, 11, 0.1);
-  --color-red: #ef4444;
-  --color-red-light: rgba(239, 68, 68, 0.1);
-  --color-orange: #f97316;
-  --color-cyan: #06b6d4;
-  --color-pink: #ec4899;
-  --color-purple: #8b5cf6;
+  --color-blue: hsl(var(--h-blue), 91%, 60%);
+  --color-blue-dark: hsl(var(--h-blue), 91%, 45%);
+  --color-accent: var(--color-blue);
+  --color-accent-light: hsla(var(--h-blue), 91%, 60%, 0.1);
 
-  --gradient-primary: linear-gradient(135deg, #3B82F6 0%, #06b6d4 100%);
-  --gradient-success: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-  --gradient-danger: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
-  --gradient-warm: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%);
-  --gradient-card: linear-gradient(135deg, rgba(59,130,246,0.03) 0%, rgba(6,182,212,0.02) 100%);
+  --color-green: hsl(var(--h-green), 84%, 39%);
+  --color-yellow: hsl(var(--h-yellow), 93%, 50%);
+  --color-red: hsl(var(--h-red), 84%, 60%);
 
-  /* ---- Typography ---- */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Consolidated Gradients */
+  --gradient-primary: linear-gradient(135deg, hsl(var(--h-blue), 91%, 60%) 0%, hsl(190, 91%, 45%) 100%);
+  --gradient-premium: linear-gradient(135deg, hsl(230, 80%, 60%) 0%, hsl(280, 80%, 60%) 100%);
+  --gradient-success: linear-gradient(135deg, hsl(var(--h-green), 84%, 39%) 0%, hsl(180, 84%, 39%) 100%);
+
+  /* ---- Typography (Refined Contrast) ---- */
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-size-xxs: 0.625rem;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
-  --font-size-md: 1.0625rem;
-  --font-size-lg: 1.25rem;
+  --font-size-lg: 1.125rem;
   --font-size-xl: 1.5rem;
-  --font-size-2xl: 1.875rem;
-  --font-size-3xl: 2.25rem;
-  --font-weight-light: 300;
+  --font-size-2xl: 2rem;
+  --font-size-3xl: 2.5rem;
+
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-  --font-weight-extrabold: 800;
-  --line-height-tight: 1.25;
-  --line-height-base: 1.5;
+  --font-weight-bold: 800;
+  /* Standardized bold to 800 for high contrast */
 
-  /* ---- Spacing ---- */
-  --space-1: 0.25rem;
+  /* ---- Spacing & Layout ---- */
   --space-2: 0.5rem;
-  --space-3: 0.75rem;
   --space-4: 1rem;
-  --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
 
-  /* ---- Layout ---- */
-  --sidebar-width: 260px;
-  --sidebar-collapsed: 72px;
-  --content-max-width: 1200px;
   --border-radius-sm: 8px;
   --border-radius: 12px;
   --border-radius-lg: 16px;
-  --border-radius-xl: 24px;
   --border-radius-full: 9999px;
 
+  /* ---- Interactive (44px Rule) ---- */
+  --click-target-min: 44px;
+
   /* ---- Shadows ---- */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.15);
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
-  --shadow-glow-sm: 0 0 10px rgba(59, 130, 246, 0.15);
+  --shadow-sm: 0 2px 4px hsla(0, 0%, 0%, 0.05);
+  --shadow-md: 0 8px 16px hsla(0, 0%, 0%, 0.1);
+  --shadow-lg: 0 16px 32px hsla(0, 0%, 0%, 0.15);
+  --shadow-glow: 0 0 20px hsla(var(--h-blue), 91%, 60%, 0.3);
 
   /* ---- Transitions ---- */
   --transition-fast: 150ms ease;
-  --transition-base: 250ms ease;
-  --transition-slow: 400ms ease;
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }

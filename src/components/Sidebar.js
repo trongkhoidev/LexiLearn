@@ -3,11 +3,20 @@
    ============================================ */
 
 import { navigateTo, getCurrentRoute } from '../router.js';
-import { db } from '../utils/supabase.js';
+import { db, getCurrentUser } from '../utils/supabase.js';
 
 const NAV_ITEMS = [
   { label: 'HOME', items: [
     { icon: '🏠', text: 'Dashboard', route: '/dashboard' },
+  ]},
+  { label: 'TEACHER', role: 'teacher', items: [
+    { icon: '🏫', text: 'Classrooms', route: '/classes' },
+    { icon: '📂', text: 'Materials', route: '/materials' },
+    { icon: '⚖️', text: 'Grading Hub', route: '/grading-hub' },
+  ]},
+  { label: 'MY LEARNING', role: 'student', items: [
+    { icon: '📝', text: 'My Assignments', route: '/my-assignments' },
+    { icon: '🖥️', text: 'Personal Desk', route: '/personal-desk' },
   ]},
   { label: 'STUDY', items: [
     { icon: '📚', text: 'My Decks', route: '/decks' },
@@ -43,7 +52,9 @@ function renderBase(sidebar, current, dueCount) {
       <span class="sidebar-brand">LexiLearn</span>
     </div>
     <nav class="sidebar-nav">
-      ${NAV_ITEMS.map(section => `
+      ${NAV_ITEMS
+        .filter(section => !section.role || getCurrentUser()?.role === section.role)
+        .map(section => `
         <div class="nav-section-label">${section.label}</div>
         ${section.items.map(item => `
           <a class="nav-link ${current === item.route ? 'active' : ''}"
@@ -56,11 +67,104 @@ function renderBase(sidebar, current, dueCount) {
       `).join('')}
     </nav>
     <div class="sidebar-footer">
-      LexiLearn v1.0 — Learn Smart 🧠
+      <div class="flex items-center justify-between" style="position:relative;">
+        <div class="notification-bell" id="notif-bell">
+          🔔
+          <span class="notification-badge hidden" id="notif-badge">0</span>
+          <div class="notification-dropdown" id="notif-dropdown">
+            <div class="notification-header">
+               <span>Notifications</span>
+               <button class="text-xxs font-bold text-blue-500 hover:underline" id="mark-all-read-btn">Mark all read</button>
+            </div>
+            <div class="notification-list" id="notif-list">
+              <div class="p-8 text-center text-xs text-muted">No new notifications</div>
+            </div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div style="font-weight:600;color:var(--color-text-primary);">${getCurrentUser()?.full_name || 'User'}</div>
+          <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.05em;">${getCurrentUser()?.role || ''}</div>
+        </div>
+      </div>
+      <div class="mt-4 pt-4 border-t border-gray-100 italic" style="font-size:0.6rem;">
+        LexiLearn v1.0 — Learn Smart 🧠
+      </div>
     </div>
   `;
 
-  // Mobile header logic (already in renderSidebar usually but moved for clarity)
+  // Attach notification logic
+  const bell = sidebar.querySelector('#notif-bell');
+  const dropdown = sidebar.querySelector('#notif-dropdown');
+  const badge = sidebar.querySelector('#notif-badge');
+  const markAllBtn = sidebar.querySelector('#mark-all-read-btn');
+  const user = getCurrentUser();
+
+  if (user) {
+    const refreshNotifs = async () => {
+      try {
+        const notifs = await db.notifications.listForUser(user.id);
+        const unread = notifs.filter(n => !n.read_at);
+        
+        if (unread.length > 0) {
+          badge.textContent = unread.length;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+        
+        const list = sidebar.querySelector('#notif-list');
+        if (notifs.length > 0) {
+          list.innerHTML = notifs.map(n => `
+            <div class="notification-item ${!n.read_at ? 'unread' : ''}" data-id="${n.id}">
+              <div class="notification-item-title">${n.title}</div>
+              <div class="notification-item-text">${n.body || ''}</div>
+              <div class="notification-item-time">${new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          `).join('');
+
+          list.querySelectorAll('.notification-item').forEach(item => {
+            item.addEventListener('click', async (e) => {
+               e.stopPropagation();
+               const id = item.dataset.id;
+               
+               if (!item.classList.contains('unread')) {
+                  return;
+               }
+
+               await db.notifications.markRead(id);
+               item.classList.remove('unread');
+               refreshNotifs(); // update badge
+            });
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load notifications:', err);
+      }
+    };
+
+    refreshNotifs();
+
+    markAllBtn?.addEventListener('click', async (e) => {
+       e.stopPropagation();
+       try {
+         const notifs = await db.notifications.listForUser(user.id);
+         const unread = notifs.filter(n => !n.read_at);
+         await Promise.all(unread.map(n => db.notifications.markRead(n.id)));
+         refreshNotifs();
+       } catch (err) {
+         console.error('Mark all read failed:', err);
+       }
+    });
+  }
+
+  bell?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle('open');
+  });
+
+  document.addEventListener('click', () => dropdown?.classList.remove('open'));
+
+  // Mobile header logic
   setupMobileHeader();
 
   // Attach listeners

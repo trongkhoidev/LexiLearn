@@ -132,3 +132,61 @@ export function lastNDaysKeys(n) {
 export function shortDay(dateKey) {
   return new Date(dateKey + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
 }
+
+/**
+ * Render a skeleton loader.
+ */
+export function renderSkeleton(type = 'card', count = 1) {
+  const items = Array(count).fill(0).map(() => {
+    if (type === 'table') {
+      return `
+        <div class="flex items-center gap-4 p-4 border-b">
+          <div class="skeleton skeleton-avatar"></div>
+          <div class="flex-1">
+            <div class="skeleton skeleton-text" style="width: 40%"></div>
+            <div class="skeleton skeleton-text" style="width: 25%"></div>
+          </div>
+          <div class="skeleton" style="width: 60px; height: 24px;"></div>
+        </div>
+      `;
+    }
+    if (type === 'list') {
+      return `
+        <div class="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
+          <div class="skeleton skeleton-avatar" style="width: 32px; height: 32px;"></div>
+          <div class="flex-1">
+            <div class="skeleton skeleton-text" style="width: 60%"></div>
+          </div>
+        </div>
+      `;
+    }
+    // Default Card
+    return `
+      <div class="card p-6">
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text" style="width: 60%"></div>
+        <div class="mt-4 flex gap-2">
+          <div class="skeleton" style="width: 80px; height: 32px;"></div>
+          <div class="skeleton" style="width: 80px; height: 32px;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `<div class="animate-fade-in">${items}</div>`;
+}
+
+/**
+ * Render a rich empty state.
+ */
+export function renderEmptyState({ icon = '📂', title = 'No data found', message = 'There is nothing to show here yet.', actionHtml = '' }) {
+  return `
+    <div class="empty-state animate-fade-in">
+      <div class="empty-state-icon">${icon}</div>
+      <h3 class="empty-state-title">${title}</h3>
+      <p class="empty-state-text">${message}</p>
+      ${actionHtml ? `<div class="mt-2">${actionHtml}</div>` : ''}
+    </div>
+  `;
+}

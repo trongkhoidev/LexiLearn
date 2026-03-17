@@ -4,11 +4,10 @@ import { navigateTo } from '../router.js';
 import { showModal } from '../components/Modal.js';
 import { showToast } from '../components/Toast.js';
 import { parsePastedText } from '../utils/csv.js';
-import { escapeHtml, truncate } from '../utils/helpers.js';
+import { renderSkeleton, renderEmptyState, escapeHtml, truncate } from '../utils/helpers.js';
 
-const IMPORT_PLACEHOLDER = `Từ 1\tĐịnh nghĩa 1\tPhát âm (nếu có)\tLoại từ (nếu có)\tVí dụ (nếu có)\tĐồng nghĩa (nếu có)
-Từ 2\tĐịnh nghĩa 2\t...
-Từ 3\tĐịnh nghĩa 3\t...`;
+const IMPORT_PLACEHOLDER = `Term 1\tDefinition 1\tPhonetic (optional)\tPOS (optional)\tExample (optional)\tSynonyms (optional)
+Term 2\tDefinition 2\t...`;
 
 function speakWord(word) {
   if (!word || typeof speechSynthesis === 'undefined') return;
@@ -40,16 +39,16 @@ function updateImportPreview() {
   if (countEl) countEl.textContent = parsed.length;
 
   if (parsed.length === 0) {
-    container.innerHTML = '<p class="text-muted" style="padding:var(--space-4);text-align:center;font-size:var(--font-size-sm);">Chưa có thẻ nào. Chép và dán dữ liệu phía trên.</p>';
+    container.innerHTML = '<p class="text-muted" style="padding:var(--space-4);text-align:center;font-size:var(--font-size-sm);">No valid cards detected yet. Paste your data above.</p>';
     return;
   }
   container.innerHTML = `
-    <div class="import-preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--space-3);max-height:280px;overflow-y:auto;">
+    <div class="import-preview-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--space-3);max-height:280px;overflow-y:auto;padding:var(--space-2);">
       ${parsed.map((card, i) => `
-        <div class="card" style="padding:var(--space-3);font-size:var(--font-size-sm);border:1px solid var(--color-border);">
-          <div style="font-weight:700;color:var(--color-text-primary);margin-bottom:4px;">${escapeHtml(card.word)}</div>
-          <div class="text-muted" style="font-size:0.8rem;line-height:1.3;">${escapeHtml(truncate(card.meaning || '', 60))}</div>
-          ${card.phonetic ? `<div style="margin-top:4px;font-size:0.75rem;color:#6b7280;">/${escapeHtml(card.phonetic)}/</div>` : ''}
+        <div class="card p-3 shadow-none border border-gray-100 bg-white">
+          <div class="font-bold text-sm text-gray-900 mb-1">${escapeHtml(card.word)}</div>
+          <div class="text-[10px] text-muted line-clamp-2">${escapeHtml(truncate(card.meaning || '', 60))}</div>
+          ${card.phonetic ? `<div class="mt-2 text-[9px] text-blue-500 font-mono">/${escapeHtml(card.phonetic)}/</div>` : ''}
         </div>
       `).join('')}
     </div>
@@ -57,55 +56,46 @@ function updateImportPreview() {
 }
 
 function openImportModal(deckId, onSuccess) {
-  const modal = showModal('Nhập', `
-    <form id="import-bulk-form">
-      <p class="text-muted" style="margin-bottom:var(--space-4);font-size:var(--font-size-sm);">Chép và dán dữ liệu từ Word, Excel, Google Docs, v.v.</p>
-      <textarea id="import-bulk-textarea" class="input" rows="8" placeholder="${escapeHtml(IMPORT_PLACEHOLDER)}" style="width:100%;resize:vertical;min-height:140px;font-family:inherit;"></textarea>
+  const modal = showModal('Bulk Import Cards', `
+    <form id="import-bulk-form" class="space-y-6">
+      <div class="input-group">
+        <label>Paste Data (Excel Tab-separated or CSV)</label>
+        <textarea id="import-bulk-textarea" class="textarea italic" rows="6" placeholder="${escapeHtml(IMPORT_PLACEHOLDER)}"></textarea>
+      </div>
 
-      <div style="margin-top:var(--space-5);">
-        <div style="font-weight:600;font-size:var(--font-size-sm);margin-bottom:var(--space-2);">Giữa thuật ngữ và định nghĩa</div>
-        <div class="flex flex-wrap items-center gap-4" style="margin-bottom:var(--space-4);">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="import-term-delim" value="tab" checked />
-            <span>Tab</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="import-term-delim" value="comma" />
-            <span>Phẩy</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="import-term-delim" value="custom" />
-            <span>Tuỳ chọn</span>
-          </label>
-          <input type="text" id="import-custom-term-delim" placeholder="ký tự" maxlength="2" style="width:3rem;padding:var(--space-1) var(--space-2);font-size:var(--font-size-sm);border:1px solid var(--color-border);border-radius:var(--border-radius);" />
+      <div class="grid grid-2 gap-6 p-4 bg-gray-50 rounded-xl">
+        <div>
+          <label class="text-xxs font-black uppercase tracking-widest text-muted block mb-3">Term Separator</label>
+          <div class="flex flex-col gap-2">
+            <label class="flex items-center gap-3 text-xs cursor-pointer"><input type="radio" name="import-term-delim" value="tab" checked> Tab (Excel)</label>
+            <label class="flex items-center gap-3 text-xs cursor-pointer"><input type="radio" name="import-term-delim" value="comma"> Comma (CSV)</label>
+            <label class="flex items-center gap-3 text-xs cursor-pointer"><input type="radio" name="import-term-delim" value="custom"> Custom: <input type="text" id="import-custom-term-delim" class="input py-0.5 px-1 w-8 text-center" maxlength="1"></label>
+          </div>
         </div>
-
-        <div style="font-weight:600;font-size:var(--font-size-sm);margin-bottom:var(--space-2);">Giữa các thẻ</div>
-        <div class="flex flex-wrap items-center gap-4">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="import-card-delim" value="newline" checked />
-            <span>Dòng mới</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="import-card-delim" value="semicolon" />
-            <span>Chấm phẩy</span>
-          </label>
+        <div>
+          <label class="text-xxs font-black uppercase tracking-widest text-muted block mb-3">Card Separator</label>
+          <div class="flex flex-col gap-2">
+            <label class="flex items-center gap-3 text-xs cursor-pointer"><input type="radio" name="import-card-delim" value="newline" checked> New Line</label>
+            <label class="flex items-center gap-3 text-xs cursor-pointer"><input type="radio" name="import-card-delim" value="semicolon"> Semicolon (;)</label>
+          </div>
         </div>
       </div>
 
-      <div style="margin-top:var(--space-6);padding-top:var(--space-4);border-top:1px solid var(--color-border);">
-        <div style="font-weight:600;font-size:var(--font-size-sm);margin-bottom:var(--space-3);">Các thẻ được tạo (<span id="import-preview-count">0</span> thẻ)</div>
-        <div id="import-preview-cards" class="import-preview-area" style="background:var(--color-bg-glass);border-radius:var(--border-radius);border:1px dashed var(--color-border);">
-          <p class="text-muted" style="padding:var(--space-4);text-align:center;font-size:var(--font-size-sm);">Chưa có thẻ nào. Chép và dán dữ liệu phía trên.</p>
+      <div>
+        <div class="flex-between mb-3">
+          <label class="text-xxs font-black uppercase tracking-widest text-muted">Import Preview (<span id="import-preview-count">0</span> cards)</label>
+        </div>
+        <div id="import-preview-cards" class="border border-dashed border-gray-200 rounded-xl bg-white min-h-[80px] flex-center">
+          <p class="text-xxs text-muted uppercase font-bold">Preview Area</p>
         </div>
       </div>
 
-      <div class="flex gap-3 justify-end" style="margin-top:var(--space-5);">
-        <button type="button" class="btn btn-secondary" id="import-bulk-cancel">Huỷ nhập</button>
-        <button type="submit" class="btn btn-primary" id="import-bulk-submit">Nhập</button>
+      <div class="flex gap-3 justify-end pt-4 border-t">
+        <button type="button" class="btn btn-ghost" id="import-bulk-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary px-10" id="import-bulk-submit">Import Now</button>
       </div>
     </form>
-  `, { width: 640 });
+  `, { width: 680 });
 
   const body = modal.element?.querySelector('.modal-body');
   if (!body) return;
@@ -124,15 +114,14 @@ function openImportModal(deckId, onSuccess) {
     const parsed = parsePastedText(text, termDelim, cardDelim);
     
     if (parsed.length === 0) {
-      showToast('Chưa có dữ liệu hợp lệ để nhập. Mỗi dòng cần ít nhất: Từ + Định nghĩa.', 'info');
+      showToast('No valid cards found. Ensure columns are separated correctly.', 'info');
       return;
     }
 
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<div class="spinner-sm"></div> Đang nhập...';
+    submitBtn.innerHTML = '<div class="spinner-xs"></div> Importing...';
 
     try {
-      // Create words in parallel for better performance
       await Promise.all(parsed.map(w => 
         db.words.create({
           word: w.word,
@@ -146,12 +135,12 @@ function openImportModal(deckId, onSuccess) {
       ));
       
       modal.close();
-      showToast(`Đã nhập thành công ${parsed.length} từ!`, 'success');
+      showToast(`Successfully imported ${parsed.length} words!`, 'success');
       onSuccess();
     } catch (err) {
-      showToast(`Lỗi khi nhập: ${err.message}`, 'error');
+      showToast(err.message, 'error');
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Nhập';
+      submitBtn.textContent = 'Import Now';
     }
   });
   body.querySelector('#import-bulk-cancel').onclick = () => modal.close();
@@ -159,97 +148,123 @@ function openImportModal(deckId, onSuccess) {
 
 export async function renderDeckDetail(container, params) {
   const deckSlug = params.slug;
-  container.innerHTML = `<div class="flex items-center justify-center" style="min-height:200px;"><div class="spinner"></div></div>`;
+  
+  // Initial skeleton
+  container.innerHTML = `
+    <div class="animate-fade-in" style="max-width:1100px;margin:0 auto;">
+      <div class="skeleton mb-10" style="height: 250px; border-radius: 24px;"></div>
+      <div class="flex-between mb-8">
+         <div class="skeleton" style="width: 150px; height: 32px;"></div>
+      </div>
+      <div class="space-y-4">
+        ${renderSkeleton('card', 5)}
+      </div>
+    </div>
+  `;
 
   const render = async () => {
     try {
       const deck = await db.decks.getBySlug(deckSlug);
-      const deckId = deck?.id;
       if (!deck) {
-        container.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">❓</div>
-            <div class="empty-state-title">Deck not found</div>
-            <button class="btn btn-primary" id="back-to-decks">← Back to Decks</button>
-          </div>
-        `;
-        container.querySelector('#back-to-decks')?.addEventListener('click', () => navigateTo('/decks'));
+        container.innerHTML = renderEmptyState({
+          icon: '❓',
+          title: 'Deck not found',
+          message: 'This collection might have been deleted or moved.',
+          actionHtml: `<button class="btn btn-primary" onclick="navigateTo('/decks')">← Back to Decks</button>`
+        });
         return;
       }
 
-      const words = await db.words.getByDeck(deckId);
-      const dueWords = words.filter(w => new Date(w.next_review) <= new Date());
+      const words = await db.words.getByDeck(deck.id);
+      const dueWords = words.filter(w => !w.next_review || new Date(w.next_review) <= new Date());
 
       const masteryColors = {
         New: 'badge-yellow',
-        Learning: 'badge-accent',
-        Intermediate: 'badge-accent',
+        Learning: 'badge-purple',
+        Intermediate: 'badge-blue',
         Mastered: 'badge-green',
       };
 
       container.innerHTML = `
-        <div class="animate-fade-in-up">
-          <button class="btn btn-ghost" id="back-btn" style="margin-bottom:var(--space-4);">← Back to Decks</button>
+        <div class="animate-fade-in-up" style="max-width:1100px;margin:0 auto;">
+          <div class="flex-between mb-6">
+            <button class="btn btn-ghost btn-sm text-muted font-bold" id="back-btn">← Back to All Decks</button>
+            <div class="badge badge-outline text-xxs uppercase font-black tracking-widest">Deck Info</div>
+          </div>
 
-          <div class="card card-gradient" style="margin-bottom:var(--space-8);padding:var(--space-8);">
-            <div class="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);margin-bottom:var(--space-2);">
-                  ${escapeHtml(deck.name)}
-                </h1>
-                <p class="text-muted" style="max-width:600px;">${escapeHtml(deck.description || 'No description')}</p>
+          <div class="hero-card shadow-xl p-10 mb-10 text-white relative overflow-hidden" style="background: var(--gradient-primary); border: none;">
+            <div class="relative z-10">
+              <div class="flex-between flex-wrap gap-8 items-start mb-10">
+                <div class="flex-1">
+                  <h1 class="text-4xl font-extra-bold mb-3">${escapeHtml(deck.name)}</h1>
+                  <p class="text-blue-50 leading-relaxed max-w-xl opacity-80">${escapeHtml(deck.description || 'Build your vocabulary foundation with this curated collection.')}</p>
+                </div>
+                <div class="flex gap-3 flex-wrap">
+                  ${dueWords.length > 0 ? `<button class="btn bg-white text-blue-600 hover:bg-blue-50 font-black px-8 py-3 shadow-lg" id="study-deck-btn">Start Review (${dueWords.length})</button>` : ''}
+                  <button class="btn bg-blue-500/30 text-white border-white/20 hover:bg-blue-400/40 font-bold" id="add-word-btn">+ Add Word</button>
+                  <button class="btn bg-blue-500/30 text-white border-white/20 hover:bg-blue-400/40 font-bold" id="import-bulk-btn">📥 Import</button>
+                </div>
               </div>
-              <div class="flex gap-3 flex-wrap">
-                ${dueWords.length > 0 ? `<button class="btn btn-primary" id="study-deck-btn">📖 Study (${dueWords.length})</button>` : ''}
-                <button class="btn btn-secondary" id="add-word-to-deck-btn">➕ Add Word</button>
-                <button class="btn btn-secondary" id="import-bulk-btn">📥 Import from Text</button>
+              
+              <div class="grid grid-4 gap-6">
+                <div class="bg-white/10 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                   <div class="text-3xl font-black mb-1">${words.length}</div>
+                   <div class="text-[10px] font-black uppercase tracking-widest text-blue-200">Total Cards</div>
+                </div>
+                <div class="bg-white/10 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                   <div class="text-3xl font-black mb-1">${dueWords.length}</div>
+                   <div class="text-[10px] font-black uppercase tracking-widest text-blue-200">Wait for Review</div>
+                </div>
+                <div class="bg-white/10 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                   <div class="text-3xl font-black mb-1">${words.filter(w => w.srs_level >= 5).length}</div>
+                   <div class="text-[10px] font-black uppercase tracking-widest text-blue-200">Mastered</div>
+                </div>
+                <div class="bg-white/10 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                   <div class="text-3xl font-black mb-1">${deck.items?.length || 0}</div>
+                   <div class="text-[10px] font-black uppercase tracking-widest text-blue-200">Desk Links</div>
+                </div>
               </div>
             </div>
-            <div class="grid grid-3" style="margin-top:var(--space-6);">
-              <div class="stat-card">
-                <div class="stat-value">${words.length}</div>
-                <div class="stat-label">Total Words</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value">${dueWords.length}</div>
-                <div class="stat-label">Due for Review</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value">${words.filter(w => w.srs_level >= 5).length}</div>
-                <div class="stat-label">Mastered</div>
-              </div>
+            <div class="absolute -bottom-40 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+          </div>
+
+          <div class="flex-between mb-8">
+            <h2 class="text-xl font-black text-gray-800 uppercase tracking-tight">Word Collection</h2>
+            <div class="flex gap-2">
+               <input type="text" class="input input-sm py-2 px-6" placeholder="Filter words..." id="word-search">
             </div>
           </div>
 
-          <h2 style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold);margin-bottom:var(--space-5);">Word List</h2>
-
-          ${words.length === 0 ? `
-            <div class="empty-state card">
-              <div class="empty-state-icon">📝</div>
-              <div class="empty-state-title">No words yet</div>
-              <button class="btn btn-primary" id="empty-add-word-btn">➕ Add Your First Word</button>
-            </div>
-          ` : `
-            <div class="flex flex-col gap-3 stagger">
+          ${words.length === 0 ? renderEmptyState({
+            icon: '📝',
+            title: 'Your deck is empty',
+            message: 'Add words manually or import them in bulk to start your SRS journey.',
+            actionHtml: `<button class="btn btn-primary" id="empty-add-btn">+ Add First Word</button>`
+          }) : `
+            <div class="space-y-4">
               ${words.map(word => {
                 const label = getMasteryLabel(word.srs_level || 0);
                 return `
-                  <div class="card card-interactive animate-fade-in-up word-row flex items-center justify-between gap-4" style="padding:var(--space-4) var(--space-5);" data-word-id="${word.id}">
-                    <div style="flex:1;min-width:0;">
-                      <div class="flex items-center gap-3" style="margin-bottom:2px;">
-                        <strong style="font-size:var(--font-size-md);">${escapeHtml(word.word)}</strong>
-                        ${word.pos ? `<span class="badge badge-outline">${escapeHtml(word.pos)}</span>` : ''}
-                        ${word.phonetic ? `<span style="color:#6b7280;font-size:0.8rem;font-style:italic;">/${escapeHtml(word.phonetic)}/</span>` : ''}
-                        <span class="badge ${masteryColors[label] || 'badge-accent'}">${label}</span>
+                  <div class="card card-interactive hover-lift group word-row flex items-center justify-between gap-6 px-8 py-5" data-word-id="${word.id}">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-4 mb-2">
+                        <strong class="text-lg font-black text-gray-900">${escapeHtml(word.word)}</strong>
+                        ${word.pos ? `<span class="badge badge-outline text-[10px] font-black uppercase tracking-tight">${escapeHtml(word.pos)}</span>` : ''}
+                        ${word.phonetic ? `<span class="text-xs text-blue-500 font-mono italic">/${escapeHtml(word.phonetic)}/</span>` : ''}
+                        <span class="badge ${masteryColors[label] || 'badge-accent'} text-[9px] font-black uppercase tracking-widest ml-auto sm:ml-0">${label}</span>
                       </div>
-                      <div class="text-sm text-muted">${escapeHtml(truncate(word.meaning || '', 80))}</div>
-                      ${word.example_sent ? `<div class="text-xs text-muted" style="margin-top:2px;font-style:italic;">${escapeHtml(truncate(word.example_sent, 80))}</div>` : ''}
+                      <div class="text-sm font-medium text-gray-600 line-clamp-1 mb-1">${escapeHtml(word.meaning || '')}</div>
+                      ${word.example_sent ? `<div class="text-xs text-muted font-medium italic opacity-70 line-clamp-1">${escapeHtml(word.example_sent)}</div>` : ''}
                     </div>
+                    
                     <div class="flex items-center gap-2">
-                      <span class="text-sm text-muted">${formatNextReview(word.next_review)}</span>
-                      <button class="btn btn-ghost btn-sm speak-word-btn" data-word="${escapeHtml(word.word)}" title="Phát âm" style="font-size:1rem;">🔊</button>
-                      <button class="btn btn-ghost btn-sm edit-word-btn" data-word-id="${word.id}">✏️</button>
-                      <button class="btn btn-ghost btn-sm del-word-btn" data-word-id="${word.id}">🗑️</button>
+                      <div class="text-right mr-4 hidden md:block">
+                        <div class="text-[10px] font-black text-muted uppercase tracking-widest mb-1">Next Review</div>
+                        <div class="text-xs font-bold text-gray-800">${formatNextReview(word.next_review)}</div>
+                      </div>
+                      <button class="btn btn-ghost btn-sm speak-word-btn w-10 h-10 flex-center text-xl hover:bg-blue-50 hover:text-blue-600 transition-colors" data-word="${escapeHtml(word.word)}" title="Hear pronunciation">🔊</button>
+                      <button class="btn btn-ghost btn-sm edit-word-btn w-10 h-10 flex-center text-xl hover:bg-pink-50 hover:text-pink-600 transition-colors" data-word-id="${word.id}">✏️</button>
+                      <button class="btn btn-ghost btn-sm del-word-btn w-10 h-10 flex-center text-xl hover:bg-red-50 hover:text-red-500 transition-colors" data-word-id="${word.id}">🗑️</button>
                     </div>
                   </div>
                 `;
@@ -259,9 +274,13 @@ export async function renderDeckDetail(container, params) {
         </div>
       `;
 
-      setupEvents(deckId, words);
+      setupEvents(deck.id, words);
     } catch (err) {
-      container.innerHTML = `<div class="card" style="padding:2rem;text-align:center;"><h3 style="color:#ef4444;">Error</h3><p>${err.message}</p></div>`;
+      container.innerHTML = `<div class="p-12 text-center text-red-500 card m-8 shadow-xl">
+        <h2 class="font-bold mb-2">Failed to load deck data</h2>
+        <p class="text-sm opacity-70 mb-6">${err.message}</p>
+        <button class="btn btn-primary btn-sm" onclick="window.location.reload()">Retry Now</button>
+      </div>`;
     }
   };
 
@@ -269,122 +288,107 @@ export async function renderDeckDetail(container, params) {
     container.querySelector('#back-btn').addEventListener('click', () => navigateTo('/decks'));
     container.querySelector('#study-deck-btn')?.addEventListener('click', () => navigateTo(`/study/${deckSlug}`));
 
-    // Add word inline modal
-    const openAddWordModal = () => {
-      const modal = showModal('➕ Thêm Từ Mới', `
-        <div style="display:flex;flex-direction:column;gap:var(--space-4);">
-          <div><label class="form-label">Từ vựng *</label><input id="aw-word" class="input" placeholder="e.g. sustainable" /></div>
-          <div><label class="form-label">Nghĩa (tiếng Việt) *</label><input id="aw-meaning" class="input" placeholder="e.g. bền vững" /></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);">
-            <div><label class="form-label">Phiên âm</label><input id="aw-phonetic" class="input" placeholder="e.g. səˈsteɪnəbl" /></div>
-            <div><label class="form-label">Loại từ</label><input id="aw-pos" class="input" placeholder="e.g. adjective" /></div>
+    const openWordModal = (word = null) => {
+      const isEdit = !!word;
+      const content = `
+        <form id="word-form" class="space-y-4">
+          <div class="grid grid-2 gap-4">
+             <div class="input-group">
+                <label>Target Language (En) *</label>
+                <input type="text" name="word" class="input" value="${escapeHtml(word?.word || '')}" placeholder="sustainable" required>
+             </div>
+             <div class="input-group">
+                <label>Meaning (Vi) *</label>
+                <input type="text" name="meaning" class="input" value="${escapeHtml(word?.meaning || '')}" placeholder="bền vững" required>
+             </div>
           </div>
-          <div><label class="form-label">Câu ví dụ</label><input id="aw-example" class="input" placeholder="e.g. We need sustainable solutions." /></div>
-          <div><label class="form-label">Giải thích (tiếng Anh)</label><input id="aw-explanation" class="input" placeholder="e.g. Able to be maintained over time" /></div>
-          <div class="flex gap-3 justify-end" style="margin-top:var(--space-2);">
-            <button class="btn btn-secondary" id="aw-cancel">Huỷ</button>
-            <button class="btn btn-primary" id="aw-save">Lưu từ</button>
+          <div class="grid grid-2 gap-4">
+             <div class="input-group">
+                <label>Phonetic</label>
+                <input type="text" name="phonetic" class="input" value="${escapeHtml(word?.phonetic || '')}" placeholder="/səˈsteɪnəbl/">
+             </div>
+             <div class="input-group">
+                <label>Part of Speech</label>
+                <input type="text" name="pos" class="input" value="${escapeHtml(word?.pos || '')}" placeholder="adj.">
+             </div>
           </div>
-        </div>
-      `, { width: 520 });
-      const body = modal.element?.querySelector('.modal-body');
-      if (!body) return;
-      body.querySelector('#aw-cancel').onclick = () => modal.close();
-      body.querySelector('#aw-save').onclick = async (e) => {
-        const btn = e.target;
-        const word = body.querySelector('#aw-word').value.trim();
-        const meaning = body.querySelector('#aw-meaning').value.trim();
-        if (!word || !meaning) { showToast('Vui lòng nhập từ và nghĩa!', 'info'); return; }
-        
-        btn.disabled = true;
-        btn.innerHTML = '<div class="spinner-sm"></div> Đang lưu...';
+          <div class="input-group">
+             <label>Context / Example Sentence</label>
+             <textarea name="example" class="textarea" rows="2" placeholder="Economic growth must be sustainable in the long term.">${escapeHtml(word?.example_sent || '')}</textarea>
+          </div>
+          <div class="input-group">
+             <label>Deep Explanation (Internal)</label>
+             <textarea name="explanation" class="textarea" rows="2">${escapeHtml(word?.explanation || '')}</textarea>
+          </div>
+          <div class="mt-8 flex justify-end gap-3">
+             <button type="button" class="btn btn-ghost modal-close-btn" id="cancel-word">Cancel</button>
+             <button type="submit" class="btn btn-primary px-10">${isEdit ? 'Update Word' : 'Save New Word'}</button>
+          </div>
+        </form>
+      `;
+
+      const modal = showModal(isEdit ? 'Edit Word Properties' : '➕ Add Vocabulary', content, { width: 560 });
+      const form = modal.element.querySelector('#word-form');
+      
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="spinner-xs"></div> Saving...';
 
         try {
-          await db.words.create({
-            word, meaning, deck_id: deckId,
-            phonetic: body.querySelector('#aw-phonetic').value.trim(),
-            pos: body.querySelector('#aw-pos').value.trim(),
-            example_sent: body.querySelector('#aw-example').value.trim(),
-            explanation: body.querySelector('#aw-explanation').value.trim(),
-          });
+          const payload = {
+            word: data.get('word').trim(),
+            meaning: data.get('meaning').trim(),
+            deck_id: deckId,
+            phonetic: data.get('phonetic').trim(),
+            pos: data.get('pos').trim(),
+            example_sent: data.get('example').trim(),
+            explanation: data.get('explanation').trim()
+          };
+
+          if (isEdit) await db.words.update(word.id, payload);
+          else await db.words.create(payload);
+
           modal.close();
-          showToast('Đã thêm từ thành công! 🎉', 'success');
+          showToast(isEdit ? 'Word properties updated!' : 'Successfully added to collection!', 'success');
           render();
         } catch (err) {
           showToast(err.message, 'error');
-          btn.disabled = false;
-          btn.textContent = 'Lưu từ';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Retry Save';
         }
-      };
+      });
+
+      modal.element.querySelector('#cancel-word').onclick = () => modal.close();
     };
 
-    container.querySelector('#add-word-to-deck-btn')?.addEventListener('click', openAddWordModal);
-    container.querySelector('#empty-add-word-btn')?.addEventListener('click', openAddWordModal);
+    container.querySelector('#add-word-btn')?.addEventListener('click', () => openWordModal());
+    container.querySelector('#empty-add-btn')?.addEventListener('click', () => openWordModal());
 
     container.querySelectorAll('.speak-word-btn').forEach(btn => {
       btn.addEventListener('click', (e) => { e.stopPropagation(); speakWord(btn.dataset.word); });
     });
 
     container.querySelectorAll('.edit-word-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+      btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const word = words.find(w => w.id === btn.dataset.wordId);
-        if (!word) return;
-        const modal = showModal('✏️ Chỉnh sửa từ', `
-          <div style="display:flex;flex-direction:column;gap:var(--space-4);">
-            <div><label class="form-label">Từ vựng *</label><input id="ew-word" class="input" value="${escapeHtml(word.word)}" /></div>
-            <div><label class="form-label">Nghĩa (tiếng Việt) *</label><input id="ew-meaning" class="input" value="${escapeHtml(word.meaning || '')}" /></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);">
-              <div><label class="form-label">Phiên âm</label><input id="ew-phonetic" class="input" value="${escapeHtml(word.phonetic || '')}" /></div>
-              <div><label class="form-label">Loại từ</label><input id="ew-pos" class="input" value="${escapeHtml(word.pos || '')}" /></div>
-            </div>
-            <div><label class="form-label">Câu ví dụ</label><input id="ew-example" class="input" value="${escapeHtml(word.example_sent || '')}" /></div>
-            <div><label class="form-label">Giải thích</label><input id="ew-explanation" class="input" value="${escapeHtml(word.explanation || '')}" /></div>
-            <div class="flex gap-3 justify-end" style="margin-top:var(--space-2);">
-              <button class="btn btn-secondary" id="ew-cancel">Huỷ</button>
-              <button class="btn btn-primary" id="ew-save">Cập nhật</button>
-            </div>
-          </div>
-        `, { width: 520 });
-        const body = modal.element?.querySelector('.modal-body');
-        if (!body) return;
-        body.querySelector('#ew-cancel').onclick = () => modal.close();
-        body.querySelector('#ew-save').onclick = async (e) => {
-          const btn = e.target;
-          const newWord = body.querySelector('#ew-word').value.trim();
-          const newMeaning = body.querySelector('#ew-meaning').value.trim();
-          if (!newWord || !newMeaning) { showToast('Vui lòng nhập từ và nghĩa!', 'info'); return; }
-
-          btn.disabled = true;
-          btn.innerHTML = '<div class="spinner-sm"></div> Đang lưu...';
-
-          try {
-            await db.words.update(word.id, {
-              word: newWord, meaning: newMeaning,
-              phonetic: body.querySelector('#ew-phonetic').value.trim(),
-              pos: body.querySelector('#ew-pos').value.trim(),
-              example_sent: body.querySelector('#ew-example').value.trim(),
-              explanation: body.querySelector('#ew-explanation').value.trim(),
-            });
-            modal.close();
-            showToast('Đã cập nhật từ! ✅', 'success');
-            render();
-          } catch (err) {
-            showToast(err.message, 'error');
-            btn.disabled = false;
-            btn.textContent = 'Cập nhật';
-          }
-        };
+        openWordModal(word);
       });
     });
 
     container.querySelectorAll('.del-word-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm('Delete this word permanently?')) {
-          await db.words.delete(btn.dataset.wordId);
-          showToast('Word deleted');
-          render();
+        if (confirm('Delete this word permanently from your deck?')) {
+          try {
+            await db.words.delete(btn.dataset.wordId);
+            showToast('Word removed from collection');
+            render();
+          } catch (err) { showToast(err.message, 'error'); }
         }
       });
     });
@@ -396,3 +400,4 @@ export async function renderDeckDetail(container, params) {
 
   render();
 }
+

@@ -115,7 +115,6 @@
     color: #9ca3af;
 }
 
-/* Mobile Hamburger */
 .mobile-header {
     display: none;
     position: fixed;
@@ -130,6 +129,99 @@
     align-items: center;
     justify-content: space-between;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.notification-bell {
+    position: relative;
+    cursor: pointer;
+    font-size: 1.25rem;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.notification-bell:hover {
+    background: #f3f4f6;
+}
+
+.notification-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    background: var(--color-accent);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.65rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+}
+
+.notification-dropdown {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    width: 300px;
+    background: white;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius-lg);
+    border: 1px solid #e5e7eb;
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+}
+
+.notification-dropdown.open {
+    display: flex;
+}
+
+.notification-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.notification-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f9fafb;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.notification-item:hover {
+    background: #f9fafb;
+}
+
+.notification-item.unread {
+    background: #eff6ff;
+}
+
+.notification-item-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+}
+
+.notification-item-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+.notification-item-time {
+    font-size: 0.65rem;
+    color: #9ca3af;
+    margin-top: 4px;
 }
 
 .hamburger {
@@ -1481,4 +1573,17 @@
 .flashcard.incorrect-glow .flashcard-face {
     box-shadow: 0 0 30px rgba(239, 68, 68, 0.3), inset 0 0 20px rgba(239, 68, 68, 0.1);
     border-color: #ef4444;
+}
+
+/* ---- Auth View Overrides ---- */
+body.auth-view #sidebar,
+body.auth-view .mobile-header,
+body.auth-view .sidebar-overlay {
+    display: none !important;
+}
+
+body.auth-view #main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
 }

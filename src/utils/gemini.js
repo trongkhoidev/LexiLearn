@@ -1,8 +1,4 @@
-/* ============================================
-   Gemini API Integration Utility
-   ============================================ */
-
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+export const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 // Fallback pool of keys provided by the user to avoid rate limits
 const FALLBACK_API_KEYS = [
@@ -416,7 +412,6 @@ export async function evaluateSpeaking(transcript, targetWord) {
  * @returns {Promise<Object>} - Detailed score breakdown
  */
 export async function evaluateCustomSpeaking(transcript, question, customApiKey = '', deckVocab = []) {
-  const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
   const apiKeyToUse = customApiKey.trim() || getGeminiApiKey();
   
   const vocabListStr = deckVocab.length > 0 ? deckVocab.join(', ') : 'None';

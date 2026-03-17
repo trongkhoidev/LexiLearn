@@ -2,11 +2,25 @@ import { db } from '../utils/supabase.js';
 import { navigateTo } from '../router.js';
 import { showModal } from '../components/Modal.js';
 import { showToast } from '../components/Toast.js';
-import { percent } from '../utils/helpers.js';
+import { renderSkeleton, renderEmptyState, escapeHtml } from '../utils/helpers.js';
 import { toSlug } from '../utils/url.js';
 
 export async function renderDeckList(container) {
-  container.innerHTML = `<div class="flex items-center justify-center" style="min-height:200px;"><div class="spinner"></div></div>`;
+  // Initial skeleton state
+  container.innerHTML = `
+    <div class="animate-fade-in" style="max-width:1100px;margin:0 auto;">
+      <div class="page-header flex-between mb-8">
+        <div>
+          <div class="skeleton skeleton-title" style="width: 200px;"></div>
+          <div class="skeleton skeleton-text" style="width: 300px;"></div>
+        </div>
+        <div class="skeleton" style="width: 140px; height: 44px; border-radius: 12px;"></div>
+      </div>
+      <div class="grid grid-3 gap-6">
+        ${renderSkeleton('card', 6)}
+      </div>
+    </div>
+  `;
 
   const render = async () => {
     try {
@@ -16,42 +30,50 @@ export async function renderDeckList(container) {
       ]);
 
       container.innerHTML = `
-        <div class="animate-fade-in-up">
-          <div class="flex items-center justify-between" style="margin-bottom:var(--space-8);">
+        <div class="animate-fade-in-up" style="max-width:1100px;margin:0 auto;">
+          <div class="page-header flex-between flex-wrap gap-4 mb-8">
             <div>
-              <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;margin-bottom:var(--space-2);">My Decks</h1>
-              <p style="color:#6b7280;font-size:var(--font-size-base);">Manage ${decks.length} deck${decks.length !== 1 ? 's' : ''} — organized in the cloud</p>
+              <h1>📚 Vocabulary Decks</h1>
+              <p>Manage your word collections and track your mastery progress.</p>
             </div>
-            <button class="btn btn-primary" id="create-deck-btn">Create Deck</button>
+            <button class="btn btn-primary shadow-lg" id="create-deck-btn">+ Create New Deck</button>
           </div>
 
-          ${decks.length === 0 ? `
-            <div class="card" style="text-align:center;padding:var(--space-12) var(--space-8);border:2px dashed #e5e7eb;">
-              <div style="font-size:2.5rem;margin-bottom:var(--space-4);">📂</div>
-              <h2 style="font-size:var(--font-size-lg);font-weight:600;color:#1f2937;margin-bottom:var(--space-2);">No decks yet</h2>
-              <p style="color:#6b7280;margin-bottom:var(--space-6);max-width:450px;margin-left:auto;margin-right:auto;">Start by creating your first deck. Everything you create is automatically saved to the database.</p>
-              <button class="btn btn-primary" id="empty-create-btn">Create First Deck</button>
-            </div>
-          ` : `
-            <div class="grid grid-3 stagger">
+          <div class="divider"></div>
+
+          ${decks.length === 0 ? renderEmptyState({
+            icon: '📂',
+            title: 'No decks found',
+            message: 'Start by creating your first deck. Your collections are synced across all your devices.',
+            actionHtml: `<button class="btn btn-primary" id="empty-create-btn">Create Your First Deck</button>`
+          }) : `
+            <div class="grid grid-3">
               ${decks.map(deck => {
                 const totalWords = words.filter(w => w.deck_id === deck.id).length;
-                const progress = 0; // Simplified for now, will add aggregate stats later
+                const masteredCount = words.filter(w => w.deck_id === deck.id && w.srs_level >= 5).length;
+                const progress = totalWords > 0 ? (masteredCount / totalWords) * 100 : 0;
+                
                 return `
-                <div class="card card-interactive animate-fade-in-up" data-deck-slug="${toSlug(deck.name)}" style="cursor:pointer;display:flex;flex-direction:column;">
-                    <div class="flex items-center justify-between" style="margin-bottom:var(--space-4);">
-                      <div>
-                        <h3 style="font-size:var(--font-size-md);font-weight:600;color:#1f2937;margin-bottom:var(--space-1);">${deck.name}</h3>
+                  <div class="card card-interactive hover-lift flex flex-col justify-between h-full" data-deck-slug="${toSlug(deck.name)}">
+                    <div>
+                      <div class="flex-between mb-4">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex-center text-xl shadow-sm">📘</div>
+                        <div class="flex gap-1">
+                          <button class="btn btn-ghost btn-xs edit-deck-btn p-1" data-id="${deck.id}" title="Edit Name">✏️</button>
+                          <button class="btn btn-ghost btn-xs delete-deck-btn p-1" data-id="${deck.id}" title="Delete Deck">🗑️</button>
+                        </div>
                       </div>
-                      <div class="flex gap-2">
-                        <button class="btn btn-ghost btn-sm edit-deck-btn" data-id="${deck.id}" style="width:32px;height:32px;padding:0;">✏️</button>
-                        <button class="btn btn-ghost btn-sm delete-deck-btn" data-id="${deck.id}" style="width:32px;height:32px;padding:0;">🗑️</button>
-                      </div>
+                      <h3 class="text-lg font-bold mb-2">${escapeHtml(deck.name)}</h3>
+                      <p class="text-xs text-muted leading-relaxed line-clamp-2 mb-6">${escapeHtml(deck.description || 'No description provided.')}</p>
                     </div>
-                    <p style="font-size:var(--font-size-sm);color:#6b7280;margin-bottom:var(--space-4);flex:1;line-height:1.5;">${deck.description || 'No description'}</p>
-                    <div style="border-top:1px solid #e5e7eb;padding-top:var(--space-4);">
-                      <div class="flex items-center justify-between text-sm">
-                        <div><span style="color:#6b7280;font-size:var(--font-size-xs);">Words:</span> <strong>${totalWords}</strong></div>
+
+                    <div class="pt-4 border-t border-gray-50">
+                      <div class="flex-between mb-2">
+                        <span class="text-xxs font-black text-muted uppercase tracking-widest">${totalWords} Words</span>
+                        <span class="text-xxs font-black text-blue-600 uppercase tracking-widest">${masteredCount} Mastered</span>
+                      </div>
+                      <div class="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-500 transition-all duration-1000" style="width: ${progress}%"></div>
                       </div>
                     </div>
                   </div>
@@ -64,46 +86,56 @@ export async function renderDeckList(container) {
 
       setupEvents(decks);
     } catch (err) {
-      container.innerHTML = `<div class="card" style="padding:2rem;text-align:center;"><h3 style="color:#ef4444;">Error loading decks</h3><p>${err.message}</p></div>`;
+      container.innerHTML = `<div class="p-12 text-center text-red-500 card m-8 shadow-xl">
+        <h2 class="font-bold mb-2">Failed to load decks</h2>
+        <p class="text-sm opacity-70 mb-6">${err.message}</p>
+        <button class="btn btn-primary btn-sm" onclick="window.location.reload()">Retry Now</button>
+      </div>`;
     }
   };
 
   const setupEvents = (decks) => {
-    container.querySelectorAll('[data-deck-slug]').forEach(card => {
+    container.querySelectorAll('.card-interactive').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.edit-deck-btn') || e.target.closest('.delete-deck-btn')) return;
         navigateTo(`/deck/${card.dataset.deckSlug}`);
       });
     });
 
-    const openCreateModal = () => {
-      const modal = showModal('Create New Deck', `
-        <form id="create-deck-form" class="flex flex-col gap-4">
+    const handleCreate = () => {
+      const content = `
+        <form id="create-deck-form" class="space-y-4">
           <div class="input-group">
-            <label>Deck Name *</label>
-            <input class="input" id="deck-name-input" placeholder="e.g. IELTS Vocabulary" required autofocus>
+            <label>Deck Name</label>
+            <input type="text" id="deck-name-input" class="input" placeholder="e.g. IELTS Writing Essential Collocations" required autofocus>
           </div>
           <div class="input-group">
             <label>Description</label>
-            <textarea class="textarea" id="deck-desc-input" placeholder="What this deck is about..." rows="3"></textarea>
+            <textarea id="deck-desc-input" class="textarea" placeholder="What will you learn in this deck?" rows="3"></textarea>
           </div>
-          <button type="submit" class="btn btn-primary" style="margin-top:var(--space-2);">Create Deck</button>
+          <div class="mt-6 flex justify-end gap-3">
+            <button type="button" class="btn btn-ghost modal-close-btn" id="cancel-create">Cancel</button>
+            <button type="submit" class="btn btn-primary px-8">Create Deck</button>
+          </div>
         </form>
-      `);
+      `;
 
-      document.getElementById('create-deck-form')?.addEventListener('submit', async (e) => {
+      const modal = showModal('Create New Deck', content, { width: 450 });
+      
+      const form = modal.element.querySelector('#create-deck-form');
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        const name = document.getElementById('deck-name-input')?.value?.trim();
-        if (!name) return showToast('Please enter a deck name', 'error');
-        
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const name = form.querySelector('#deck-name-input').value.trim();
+        const description = form.querySelector('#deck-desc-input').value.trim();
+
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<div class="spinner-sm"></div> Creating...';
+        submitBtn.innerHTML = '<div class="spinner-xs"></div> Creating...';
 
         try {
-          await db.decks.create({ name, description: document.getElementById('deck-desc-input')?.value?.trim() });
+          await db.decks.create({ name, description });
           modal.close();
-          showToast(`Deck "${name}" created!`);
+          showToast(`Deck "${name}" created!`, 'success');
           render();
         } catch (e) { 
           showToast(e.message, 'error');
@@ -111,52 +143,70 @@ export async function renderDeckList(container) {
           submitBtn.textContent = 'Create Deck';
         }
       });
+
+      modal.element.querySelector('#cancel-create').addEventListener('click', () => modal.close());
     };
 
-    container.querySelector('#create-deck-btn')?.addEventListener('click', openCreateModal);
-    container.querySelector('#empty-create-btn')?.addEventListener('click', openCreateModal);
+    container.querySelector('#create-deck-btn')?.addEventListener('click', handleCreate);
+    container.querySelector('#empty-create-btn')?.addEventListener('click', handleCreate);
 
     container.querySelectorAll('.edit-deck-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const deckId = btn.dataset.id;
         const deck = decks.find(d => d.id === deckId);
-        const modal = showModal('Edit Deck', `
-          <form id="edit-deck-form" class="flex flex-col gap-4">
+        
+        const content = `
+          <form id="edit-deck-form" class="space-y-4">
             <div class="input-group">
-              <label>Deck Name *</label>
-              <input class="input" id="edit-deck-name" value="${deck.name}" required autofocus>
+              <label>Deck Name</label>
+              <input type="text" id="edit-deck-name" class="input" value="${escapeHtml(deck.name)}" required autofocus>
             </div>
-            <button type="submit" class="btn btn-primary" id="update-deck-btn">Update</button>
+            <div class="mt-6 flex justify-end gap-3">
+              <button type="button" class="btn btn-ghost modal-close-btn" id="cancel-edit">Cancel</button>
+              <button type="submit" class="btn btn-primary px-8">Update Deck</button>
+            </div>
           </form>
-        `);
-        document.getElementById('edit-deck-form').addEventListener('submit', async (e) => {
+        `;
+
+        const modal = showModal('Edit Deck', content, { width: 400 });
+        
+        const form = modal.element.querySelector('#edit-deck-form');
+        form.addEventListener('submit', async (e) => {
           e.preventDefault();
-          const submitBtn = e.target.querySelector('button[type="submit"]');
-          const name = document.getElementById('edit-deck-name').value?.trim();
-          if (!name) return showToast('Please enter a deck name', 'error');
+          const submitBtn = form.querySelector('button[type="submit"]');
+          const name = form.querySelector('#edit-deck-name').value.trim();
 
           submitBtn.disabled = true;
-          submitBtn.innerHTML = '<div class="spinner-sm"></div> Updating...';
+          submitBtn.innerHTML = '<div class="spinner-xs"></div> Updating...';
 
           try {
             await db.decks.update(deckId, { name });
             modal.close(); 
+            showToast('Deck updated!', 'success');
             render();
           } catch (e) {
             showToast(e.message, 'error');
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Update';
+            submitBtn.textContent = 'Update Deck';
           }
         });
+
+        modal.element.querySelector('#cancel-edit').addEventListener('click', () => modal.close());
       });
     });
 
     container.querySelectorAll('.delete-deck-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        if (confirm('Are you sure?')) {
-          db.decks.delete(btn.dataset.id).then(render);
+        if (confirm('Are you sure you want to delete this deck and all its words permanently?')) {
+          try {
+            await db.decks.delete(btn.dataset.id);
+            showToast('Deck deleted');
+            render();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
         }
       });
     });
@@ -164,3 +214,4 @@ export async function renderDeckList(container) {
 
   render();
 }
+

@@ -1,12 +1,11 @@
-/* ============================================
-   LexiLearn — Hash-Based SPA Router
-   ============================================ */
+import { getCurrentUser } from './utils/supabase.js';
+import { showToast } from './components/Toast.js';
 
 const routes = {};
 let currentCleanup = null;
 
-export function registerRoute(path, handler) {
-  routes[path] = handler;
+export function registerRoute(path, handler, options = {}) {
+  routes[path] = { handler, options };
 }
 
 export function navigateTo(path) {
@@ -15,12 +14,6 @@ export function navigateTo(path) {
 
 export function getCurrentRoute() {
   return window.location.hash.slice(1) || '/dashboard';
-}
-
-export function getRouteParams() {
-  const hash = getCurrentRoute();
-  const parts = hash.split('/').filter(Boolean);
-  return parts;
 }
 
 export function startRouter() {
@@ -35,29 +28,54 @@ export function startRouter() {
     const main = document.getElementById('main-content');
     if (!main) return;
 
-    // Try exact match first
-    if (routes[hash]) {
-      currentCleanup = routes[hash](main);
-      updateActiveNav(hash);
+    const user = getCurrentUser();
+
+    // Global auth guard: redirect unauthenticated users to dashboard
+    // (Dashboard handles login rendering internally)
+    if (!user && hash !== '/dashboard') {
+      navigateTo('/dashboard');
       return;
     }
 
-    // Try pattern match (e.g. /deck/:id)
-    for (const [pattern, handler] of Object.entries(routes)) {
-      const regex = patternToRegex(pattern);
-      const match = hash.match(regex);
-      if (match) {
-        const params = extractParams(pattern, match);
-        currentCleanup = handler(main, params);
-        updateActiveNav(pattern);
-        return;
+    // Check match
+    let matchFound = false;
+    let targetRoute = null;
+    let targetParams = {};
+
+    // Try exact match
+    if (routes[hash]) {
+      targetRoute = routes[hash];
+      matchFound = true;
+    } else {
+      // Try pattern match
+      for (const [pattern, config] of Object.entries(routes)) {
+        const regex = patternToRegex(pattern);
+        const match = hash.match(regex);
+        if (match) {
+          targetRoute = config;
+          targetParams = extractParams(pattern, match);
+          matchFound = true;
+          break;
+        }
       }
     }
 
-    // Fallback to dashboard
-    if (routes['/dashboard']) {
-      currentCleanup = routes['/dashboard'](main);
-      updateActiveNav('/dashboard');
+    // Role check
+    if (targetRoute) {
+      const requiredRole = targetRoute.options.role;
+      if (requiredRole && (!user || user.role !== requiredRole)) {
+        showToast(`Access Denied: ${requiredRole} only`, 'error');
+        navigateTo('/dashboard');
+        return;
+      }
+      currentCleanup = targetRoute.handler(main, targetParams);
+      updateActiveNav(hash);
+    } else {
+      // Fallback
+      if (routes['/dashboard']) {
+        currentCleanup = routes['/dashboard'].handler(main);
+        updateActiveNav('/dashboard');
+      }
     }
   };
 
