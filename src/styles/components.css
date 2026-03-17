@@ -66,18 +66,17 @@
 }
 
 .btn-primary {
-    background: var(--gradient-primary);
+    background: var(--color-accent);
     color: white;
-    box-shadow: var(--shadow-glow-sm);
 }
 
 .btn-primary:hover {
-    box-shadow: var(--shadow-glow);
-    transform: translateY(-2px);
+    background: var(--color-blue-dark);
+    transform: translateY(-1px);
 }
 
 .btn-primary:active {
-    transform: translateY(0);
+    transform: scale(0.98);
 }
 
 .btn-secondary {
@@ -104,25 +103,23 @@
 }
 
 .btn-success {
-    background: var(--gradient-success);
+    background: var(--color-green);
     color: white;
-    box-shadow: var(--shadow-glow-sm);
 }
 
 .btn-success:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-glow);
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 .btn-danger {
     background: var(--color-red);
     color: white;
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
 }
 
 .btn-danger:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 .btn-sm {
@@ -150,32 +147,33 @@
 
 /* ---- Cards ---- */
 .card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
     border-radius: var(--border-radius-lg);
     padding: var(--space-6);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--shadow-sm);
     transition: all var(--transition-base);
 }
 
 .card:hover {
-    border-color: #d1d5db;
+    border-color: var(--color-border-hover);
+    box-shadow: var(--shadow-md);
 }
 
 .card-interactive:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-md);
     border-color: var(--color-accent);
 }
 
 .card-gradient {
-    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
 }
 
 .card-glow {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+    box-shadow: var(--shadow-md);
 }
 
 /* ---- Inputs ---- */
@@ -196,8 +194,8 @@
 select.input {
     width: 100%;
     padding: var(--space-3) var(--space-4);
-    background: #f9fafb;
-    border: 2px solid #e5e7eb;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
     color: var(--color-text-primary);
     font-family: var(--font-family);
@@ -209,16 +207,14 @@ select.input {
 .input:hover,
 .textarea:hover,
 select.input:hover {
-    border-color: #d1d5db;
-    background: #ffffff;
+    border-color: var(--color-border-hover);
 }
 
 .input:focus,
 .textarea:focus,
 select.input:focus {
-    border-color: #3B82F6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 0 20px rgba(59, 130, 246, 0.1);
-    background: #ffffff;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-light);
 }
 
 .input::placeholder,

@@ -497,20 +497,20 @@
 }
 
 .flashcard-front {
-    background: linear-gradient(160deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
+    background: var(--color-bg-secondary);
+    box-shadow: var(--shadow-md);
+  }
 
 .flashcard-back {
-    background: linear-gradient(160deg, #ffffff 0%, #f0f9ff 40%, #e0f2fe 100%);
+    background: var(--color-bg-secondary);
     transform: rotateY(180deg);
     overflow-y: auto;
     justify-content: flex-start;
     padding: var(--space-8) var(--space-6);
     text-align: left;
     align-items: stretch;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
+    box-shadow: var(--shadow-md);
+  }
 
 /* ---- Study front (word side, no image) ---- */
 .study-front-head {
@@ -526,12 +526,9 @@
     font-size: clamp(1.75rem, 5vw, 2.25rem);
     font-weight: 800;
     letter-spacing: -0.02em;
-    background: linear-gradient(135deg, #1e40af 0%, #0369a1 50%, #0e7490 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--color-text-primary);
     line-height: 1.2;
-}
+  }
 
 .study-front-example {
     font-size: var(--font-size-sm);
@@ -782,13 +779,10 @@
 .flashcard-word {
     font-size: var(--font-size-3xl);
     font-weight: var(--font-weight-bold);
-    background: linear-gradient(135deg, #3B82F6 0%, #06b6d4 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--color-text-primary);
     margin-bottom: var(--space-3);
     letter-spacing: -0.5px;
-}
+  }
 
 .flashcard-pos {
     font-size: var(--font-size-sm);
