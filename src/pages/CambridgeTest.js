@@ -33,14 +33,14 @@ export function renderCambridgeTest(container) {
 
     // 2. Navigation Breadcrumbs
     const renderBreadcrumbs = () => {
-      let html = `<div class="breadcrumb" style="margin-bottom:var(--space-6);font-size:var(--font-size-sm);color:#6b7280;">
+      let html = `<div class="breadcrumb">
         <span class="breadcrumb-item link" data-view="home">📚 All Books</span>`;
       
       if (viewState.book) {
-        html += ` <span style="margin:0 8px;">/</span> <span class="breadcrumb-item link" data-view="book" data-bid="${viewState.book.id}">${escapeHtml(viewState.book.title)}</span>`;
+        html += ` <span class="breadcrumb-item separator">/</span> <span class="breadcrumb-item link" data-view="book" data-bid="${viewState.book.id}">${escapeHtml(viewState.book.title)}</span>`;
       }
       if (viewState.test) {
-        html += ` <span style="margin:0 8px;">/</span> <span class="breadcrumb-item">${escapeHtml(viewState.test.title)}</span>`;
+        html += ` <span class="breadcrumb-item separator">/</span> <span class="breadcrumb-item">${escapeHtml(viewState.test.title)}</span>`;
       }
       
       html += `</div>`;
@@ -50,27 +50,29 @@ export function renderCambridgeTest(container) {
     // 3. Main Views
     const renderBookList = () => {
       return `
-        <div class="flex items-center justify-between" style="margin-bottom:var(--space-8);">
-          <h1 style="font-size:var(--font-size-2xl);font-weight:700;color:#1f2937;">🎯 Cambridge IELTS Tests</h1>
-          <button class="btn btn-primary" id="upload-cambridge-btn">➕ Upload New Book</button>
+        <div class="cambridge-header">
+          <h1><span class="icon">🎯</span> Cambridge IELTS Tests</h1>
+          <button class="upload-cambridge-btn" id="upload-cambridge-btn">+ Upload New Book</button>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="cambridge-books-grid">
           ${fetchError ? `
-            <div class="card" style="grid-column:1/-1;text-align:center;padding:var(--space-12);border:1.5px solid #fee2e2;background:#fef2f2;">
-              <p style="color:#b91c1c;font-weight:600;">⚠️ Database Error</p>
-              <p style="color:#7f1d1d;font-size:var(--font-size-sm);margin-top:var(--space-2);">${escapeHtml(fetchError)}</p>
-              <button class="btn btn-secondary btn-sm mt-4" onclick="window.location.reload()">🔄 Retry Connection</button>
+            <div class="error-card" style="grid-column:1/-1;">
+              <div class="error-card-title">⚠️ Database Connection Error</div>
+              <div class="error-card-message">${escapeHtml(fetchError)}</div>
+              <button class="btn btn-secondary btn-sm" onclick="window.location.reload()">Retry Connection</button>
             </div>
           ` : books.length === 0 ? `
-            <div class="card" style="grid-column:1/-1;text-align:center;padding:var(--space-12);border:2px dashed #e5e7eb;">
-              <p style="color:#9ca3af;">No books uploaded yet. Start by uploading a Cambridge PDF.</p>
+            <div class="empty-state" style="grid-column:1/-1;">
+              <div class="empty-state-icon">📚</div>
+              <div class="empty-state-title">No Books Uploaded</div>
+              <div class="empty-state-message">Start by uploading your first Cambridge IELTS book PDF.</div>
             </div>
           ` : books.map(book => `
-            <div class="card card-interactive book-card" data-bid="${book.id}" style="padding:var(--space-6);display:flex;align-items:center;gap:var(--space-4);">
+            <div class="book-card" data-bid="${book.id}">
               <div class="book-spine">${book.bookNum || 'C'}</div>
               <div>
-                <h3 style="font-weight:700;">${escapeHtml(book.title)}</h3>
-                <p style="font-size:var(--font-size-xs);color:#6b7280;">${book.tests?.length || 4} Tests Available</p>
+                <h3>${escapeHtml(book.title)}</h3>
+                <p>${book.tests?.length || 4} Tests Available</p>
               </div>
             </div>
           `).join('')}
@@ -80,31 +82,28 @@ export function renderCambridgeTest(container) {
 
     const renderBookDetail = (book) => {
       return `
-        <div style="margin-bottom:var(--space-8);">
-          <h1 style="font-size:var(--font-size-2xl);font-weight:700;">${escapeHtml(book.title)}</h1>
-          <p style="color:#6b7280;">Select a test to start practicing</p>
+        <div class="book-detail-header">
+          <h1>${escapeHtml(book.title)}</h1>
+          <p>Select a test to start practicing</p>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="tests-grid">
           ${(book.tests || []).map(test => `
-            <div class="card" style="padding:var(--space-6);">
-              <div class="flex justify-between items-center" style="margin-bottom:var(--space-6);">
-                <h3 style="font-weight:700;font-size:var(--font-size-lg);">${escapeHtml(test.title)}</h3>
-                <span class="badge badge-primary">Standard Time</span>
+            <div class="test-card">
+              <div class="test-card-header">
+                <h3>${escapeHtml(test.title)}</h3>
+                <span class="test-card-badge">Standard Time</span>
               </div>
-              <div class="test-modules-grid" style="display:flex;flex-direction:column;gap:var(--space-4);">
+              <div class="test-modules-grid">
                 <div class="test-module-row">
-                  <div class="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-100">
-                    <div class="flex items-center gap-3">
-                      <span style="font-size:1.2rem;">📖</span>
-                      <div>
-                        <div style="font-weight:600;font-size:var(--font-size-sm);">Reading Practice</div>
-                        <div style="font-size:0.7rem;color:#9ca3af;">3 Sections / 40 Questions</div>
-                      </div>
+                  <div class="test-module">
+                    <div class="test-module-icon">📖</div>
+                    <div class="test-module-info">
+                      <div class="test-module-title">Reading Practice</div>
+                      <div class="test-module-meta">3 Sections / 40 Questions</div>
                     </div>
-                    <button class="btn btn-secondary btn-sm play-test-btn" data-tid="${test.id}" data-type="reading">Start</button>
+                    <button class="test-module-button play-test-btn" data-tid="${test.id}" data-type="reading">Start</button>
                   </div>
                 </div>
-                <!-- ... other modules placeholders ... -->
               </div>
             </div>
           `).join('')}
@@ -114,23 +113,26 @@ export function renderCambridgeTest(container) {
 
     // Construct UI
     container.innerHTML = `
-      <div class="animate-fade-in-up" style="max-width:1000px;margin:0 auto;">
+      <div class="animate-fade-in-up" style="max-width:1200px;margin:0 auto;">
         ${renderBreadcrumbs()}
         <div id="cambridge-main-content">
           ${!viewState.book ? renderBookList() : renderBookDetail(viewState.book)}
         </div>
         
         <!-- Upload Modal (Hidden by default) -->
-        <div id="upload-zone-container" style="display:none;margin-top:var(--space-8);">
-          <div class="card" id="cambridge-drop-zone" style="padding:var(--space-10);text-align:center;border:2px dashed #d1d5db;cursor:pointer;">
-            <div style="font-size:3rem;margin-bottom:var(--space-4);">📑</div>
-            <h3 style="font-weight:600;">Drop Cambridge PDF here</h3>
-            <p style="color:#6b7280;font-size:var(--font-size-sm);">Supports Reading section parsing for now</p>
-            <input type="file" id="cambridge-file-input" accept="application/pdf" style="display:none;" />
+        <div id="upload-zone-container" style="display:none;margin-top:var(--space-10);">
+          <div id="cambridge-drop-zone" class="cambridge-drop-zone">
+            <div class="cambridge-drop-zone-icon">📑</div>
+            <h3>Drop Cambridge PDF Here</h3>
+            <p>Supports Reading section parsing for now</p>
+            <input type="file" id="cambridge-file-input" accept="application/pdf" />
           </div>
-          <div id="parse-progress" style="display:none;margin-top:var(--space-4);">
-            <div class="flex items-center gap-3"><div class="spinner"></div><span id="progress-status">Reading...</span></div>
-            <div class="progress-bar"><div class="progress-bar-fill" id="parse-progress-bar" style="width:0%;"></div></div>
+          <div id="parse-progress" class="parse-progress" style="display:none;margin-top:var(--space-6);">
+            <div class="spinner"></div>
+            <span id="progress-status">Reading PDF...</span>
+          </div>
+          <div class="progress-bar" style="margin-top:var(--space-4);display:none;" id="parse-progress-container">
+            <div class="progress-bar-fill" id="parse-progress-bar"></div>
           </div>
         </div>
       </div>

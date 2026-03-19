@@ -7,6 +7,8 @@ import './styles/base.css';
 import './styles/components.css';
 import './styles/layout.css';
 import './styles/auth.css';
+import './styles/dashboard.css';
+import './styles/cambridge.css';
 
 import { registerRoute, startRouter } from './router.js';
 import { renderSidebar } from './components/Sidebar.js';

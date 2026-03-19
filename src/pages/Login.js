@@ -63,13 +63,13 @@ export function renderLogin(container) {
                 </div>
               ` : ''}
 
-              <div id="auth-error" class="auth-error hidden">
+              <div id="auth-error" class="auth-error hidden" style="display: none !important;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="8" x2="12" y2="12"></line>
                   <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
-                <span id="error-text">Invalid login credentials</span>
+                <span id="error-text"></span>
               </div>
 
               <button type="submit" class="auth-submit-btn" id="auth-submit-btn">
@@ -86,29 +86,6 @@ export function renderLogin(container) {
               </p>
             </div>
           </div>
-
-          <!-- Demo Selector -->
-          ${!isSignup ? `
-            <div class="demo-section">
-              <span class="demo-label">Quick Access Demo</span>
-              <div class="demo-chips">
-                <button class="demo-chip" data-email="lexilearn.admin@gmail.com" data-pass="Admin123!">
-                  <div class="demo-icon teacher">T</div>
-                  <div class="demo-info">
-                    <div class="demo-name">Teacher Dashboard</div>
-                    <div class="demo-email">lexilearn.admin@gmail.com</div>
-                  </div>
-                </button>
-                <button class="demo-chip" data-email="lexilearn.student@gmail.com" data-pass="Student123!">
-                  <div class="demo-icon student">S</div>
-                  <div class="demo-info">
-                    <div class="demo-name">Student Profile</div>
-                    <div class="demo-email">lexilearn.student@gmail.com</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-          ` : ''}
         </div>
       </div>
     `;
@@ -140,16 +117,6 @@ export function renderLogin(container) {
       render();
     });
 
-    // Demo Chips
-    container.querySelectorAll('.demo-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        container.querySelector('#auth-email').value = chip.dataset.email;
-        container.querySelector('#auth-password').value = chip.dataset.pass;
-        // Optionally auto-submit
-        form.requestSubmit();
-      });
-    });
-
     // Handle Submit
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -157,6 +124,8 @@ export function renderLogin(container) {
       const email = container.querySelector('#auth-email').value.trim();
       const password = container.querySelector('#auth-password').value.trim();
       
+      // Always hide the error initially
+      errorEl.style.display = 'none';
       errorEl.classList.add('hidden');
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<div class="spinner-sm"></div>';
@@ -174,6 +143,7 @@ export function renderLogin(container) {
           } else {
             errorText.textContent = "Account created! Please sign in.";
           }
+          errorEl.style.display = 'flex';
           errorEl.classList.remove('hidden');
           errorEl.style.background = '#f0fdf4';
           errorEl.style.borderColor = '#dcfce7';
@@ -185,6 +155,7 @@ export function renderLogin(container) {
         }
       } catch (err) {
         errorText.textContent = err.message || 'Authentication failed';
+        errorEl.style.display = 'flex';
         errorEl.classList.remove('hidden');
         errorEl.style.background = '#fef2f2';
         errorEl.style.borderColor = '#fee2e2';
