@@ -939,10 +939,10 @@ export function renderCambridgeTest(container) {
                  <div id="passage-viewport" class="w-full flex-1 flex flex-col transition-all duration-300 min-h-[85vh]">
                     ${state.meta?.media?.pdf?.url 
                       ? `<iframe src="${state.meta.media.pdf.url}" class="w-full h-full rounded-2xl shadow-xl flex-1 bg-white" style="border: 1px solid #e2e8f0;"></iframe>`
-                      : `<div class="flex items-center justify-center h-full">
+                      : `<div class="flex items-center justify-center h-full cursor-pointer group" id="passage-upload-area">
                            <div class="flex flex-col items-center gap-3">
-                             <svg class="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                             <p class="text-slate-500 text-sm font-medium uppercase tracking-widest">Upload file</p>
+                             <svg class="w-16 h-16 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                             <p class="text-slate-500 group-hover:text-slate-700 text-sm font-medium uppercase tracking-widest transition-colors">Upload file</p>
                            </div>
                          </div>`
                     }
@@ -1016,8 +1016,9 @@ export function renderCambridgeTest(container) {
       });
 
       const overlay = container.querySelector('#pdf-upload-overlay');
-      container.querySelector('#import-pdf-btn')?.addEventListener('click', () => container.querySelector('#pdf-input-hidden')?.click());
-      container.querySelector('#pdf-input-hidden')?.addEventListener('change', async (e) => {
+         container.querySelector('#import-pdf-btn')?.addEventListener('click', () => container.querySelector('#pdf-input-hidden')?.click());
+         container.querySelector('#passage-upload-area')?.addEventListener('click', () => container.querySelector('#pdf-input-hidden')?.click());
+         container.querySelector('#pdf-input-hidden')?.addEventListener('change', async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
         try {
