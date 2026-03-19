@@ -916,39 +916,52 @@ export function renderCambridgeTest(container) {
         <div class="reading-editor-layout flex h-full w-full bg-slate-50 overflow-hidden">
            <!-- LEFT COLUMN: 60% -->
            <div class="w-[60%] flex flex-col min-h-0 border-r border-slate-200 shadow-sm relative z-10 bg-slate-50">
-              <div class="p-6 border-b bg-white flex justify-between items-center shrink-0">
+              <div class="p-6 border-b bg-white border-slate-200 flex justify-between items-center shrink-0" style="border-top: 4px solid #2563eb;">
                  <div class="flex items-center gap-3">
                     <span class="w-3 h-3 rounded-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)]"></span>
-                    <span class="font-black text-slate-800 uppercase tracking-widest text-xs">Passage Viewer</span>
+                    <span class="font-bold text-slate-800 uppercase tracking-widest text-sm">Passage Viewer</span>
                  </div>
-                 <div class="flex gap-2">
+                 <div class="flex gap-2 items-center">
                     ${state.meta?.media?.pdf?.url ? `
-                      <button class="btn btn-ghost btn-xs rounded-lg hover:bg-slate-100" id="zoom-in-btn" title="Zoom In">➕</button>
-                      <button class="btn btn-ghost btn-xs rounded-lg hover:bg-slate-100" id="zoom-out-btn" title="Zoom Out">➖</button>
-                      <button class="btn btn-ghost btn-xs rounded-lg hover:bg-slate-100" title="Dark Mode" id="toggle-dark-btn" title="Dark Mode">🌙</button>
-                      <div class="h-4 w-[1px] bg-slate-200 mx-1"></div>
-                      <button class="btn btn-ghost btn-xs text-red-500 font-bold hover:bg-red-50" id="clear-pdf-btn">✕ Clear</button>
+                      <div class="h-6 w-[1px] bg-slate-300"></div>
+                      <button class="btn btn-ghost btn-sm rounded-lg hover:bg-slate-100 font-bold text-slate-600" id="zoom-in-btn" title="Zoom In">➕</button>
+                      <button class="btn btn-ghost btn-sm rounded-lg hover:bg-slate-100 font-bold text-slate-600" id="zoom-out-btn" title="Zoom Out">➖</button>
+                      <button class="btn btn-ghost btn-sm rounded-lg hover:bg-slate-100 font-bold text-slate-600" title="Dark Mode" id="toggle-dark-btn">🌙</button>
+                      <div class="h-6 w-[1px] bg-slate-300 mx-1"></div>
+                      <button class="btn btn-ghost btn-sm text-red-600 font-bold hover:bg-red-50 rounded-lg" id="clear-pdf-btn">Clear</button>
                     ` : ''}
-                    <button class="btn btn-secondary btn-xs px-4 rounded-lg shadow-sm" id="import-pdf-btn">📄 ${state.meta?.media?.pdf?.url ? 'Replace PDF' : 'Upload PDF'}</button>
+                    <button class="btn btn-primary btn-sm px-5 rounded-lg shadow-md font-bold" id="import-pdf-btn">${state.meta?.media?.pdf?.url ? 'Replace PDF' : '📄 Upload PDF'}</button>
                     <input type="file" id="pdf-input-hidden" class="hidden" accept="application/pdf">
                  </div>
               </div>
               
-              <div class="flex-1 overflow-auto p-4 md:p-8 relative flex flex-col bg-slate-100/50">
+              <div class="flex-1 overflow-auto p-4 md:p-8 relative flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
                  <div id="passage-viewport" class="w-full flex-1 flex flex-col transition-all duration-300 min-h-[85vh]">
                     ${state.meta?.media?.pdf?.url 
                       ? `<iframe src="${state.meta.media.pdf.url}" class="w-full h-full rounded-2xl shadow-xl flex-1 bg-white" style="border: 1px solid #e2e8f0;"></iframe>`
-                      : `<div class="flex flex-col items-center justify-center h-full text-slate-400 bg-white rounded-3xl border-2 border-dashed border-slate-200 shadow-sm p-10">
-                           <svg class="w-16 h-16 mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                           <p class="font-bold text-lg text-slate-600">No PDF Uploaded</p>
-                           <p class="text-sm mt-2 text-slate-400 max-w-sm text-center">Please click the Upload PDF button above to upload the reading passage and questions.</p>
+                      : `<div class="flex flex-col items-center justify-center h-full text-slate-500 bg-white rounded-2xl border border-slate-200 shadow-md p-10 relative overflow-hidden">
+                           <div class="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-transparent opacity-50"></div>
+                           <div class="relative z-10 flex flex-col items-center">
+                             <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center mb-6 border border-blue-200/50 shadow-sm">
+                               <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                             </div>
+                             <p class="font-bold text-xl text-slate-800">Ready to Upload</p>
+                             <p class="text-sm mt-3 text-slate-600 max-w-sm text-center leading-relaxed">Click the <span class="font-semibold">Upload PDF</span> button to import your reading passage. The passage will appear here for review.</p>
+                             <div class="mt-6 pt-6 border-t border-slate-200 w-full">
+                               <p class="text-xs text-slate-500 font-medium uppercase tracking-widest">Supported Format</p>
+                               <p class="text-sm text-slate-600 mt-2 font-medium">PDF documents only (any size)</p>
+                             </div>
+                           </div>
                          </div>`
                     }
                  </div>
-                 <div id="pdf-upload-overlay" class="absolute inset-0 bg-slate-100/90 backdrop-blur-sm items-center justify-center z-50 flex" style="display: none;">
-                   <div class="flex flex-col items-center gap-4 bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
-                     <div class="spinner-lg border-blue-600 border-t-transparent"></div>
-                     <span class="font-black text-slate-800 tracking-tight">Uploading PDF...</span>
+                 <div id="pdf-upload-overlay" class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm items-center justify-center z-50 flex rounded-2xl" style="display: none;">
+                   <div class="flex flex-col items-center gap-4 bg-white p-10 rounded-2xl shadow-2xl border border-slate-200">
+                     <div class="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-2">
+                       <div class="spinner-sm border-white border-t-transparent"></div>
+                     </div>
+                     <span class="font-bold text-slate-900 tracking-tight text-lg">Uploading PDF</span>
+                     <span class="text-sm text-slate-500">Please wait while we process your file...</span>
                    </div>
                  </div>
               </div>
@@ -956,19 +969,19 @@ export function renderCambridgeTest(container) {
            
            <!-- RIGHT COLUMN: 40% -->
            <div class="w-[40%] flex flex-col min-h-0 bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.03)] z-20">
-              <div class="p-6 border-b flex justify-between items-center bg-white shrink-0">
+              <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-white shrink-0" style="border-top: 4px solid #059669;">
                  <div class="flex items-center gap-3">
                     <span class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]"></span>
-                    <span class="font-black text-slate-800 uppercase tracking-widest text-xs">Question & Answer Builder</span>
+                    <span class="font-bold text-slate-800 uppercase tracking-widest text-sm">Question & Answer</span>
                  </div>
-                 <button class="btn btn-ghost btn-xs text-blue-600 font-bold hover:bg-blue-50 px-3 rounded-lg" id="reading-add-block-btn">+ Add Format Block</button>
+                 <button class="btn btn-outline btn-sm text-emerald-600 font-bold hover:bg-emerald-50 px-4 rounded-lg border-emerald-300" id="reading-add-block-btn">+ Add Block</button>
               </div>
               
-              <div class="flex-1 overflow-auto p-6 bg-slate-50" id="reading-q-builder-container"></div>
+              <div class="flex-1 overflow-auto p-6 bg-gradient-to-b from-slate-50 to-white" id="reading-q-builder-container"></div>
               
-              <div class="p-6 border-t bg-white flex justify-between items-center shrink-0">
-                 <button class="btn btn-ghost font-bold text-slate-500 hover:text-slate-800" id="cam-back-to-formats-inline">← Back</button>
-                 <button class="btn btn-primary px-10 py-3.5 h-auto rounded-xl font-black shadow-lg shadow-blue-200/50 hover:-translate-y-0.5 transition-all" id="cam-publish-btn">🚀 Publish to Library</button>
+              <div class="p-6 border-t border-slate-200 bg-white flex justify-between items-center shrink-0">
+                 <button class="btn btn-ghost font-bold text-slate-600 hover:text-slate-900" id="cam-back-to-formats-inline">← Back</button>
+                 <button class="btn btn-primary px-8 py-2.5 h-auto rounded-lg font-bold shadow-md shadow-blue-200/50 hover:-translate-y-0.5 transition-all" id="cam-publish-btn">Publish to Library</button>
               </div>
            </div>
         </div>
@@ -1056,10 +1069,23 @@ export function renderCambridgeTest(container) {
 
          if (!isPdfActive) {
             builder.innerHTML = `
-               <div class="h-full flex flex-col items-center justify-center text-slate-400 bg-white rounded-3xl border-2 border-dashed border-slate-200 shadow-sm p-10 m-6">
-                 <svg class="w-20 h-20 mb-6 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                 <p class="font-black text-xl text-slate-400 uppercase tracking-widest">No PDF Uploaded</p>
-                 <p class="text-sm mt-3 text-slate-400 max-w-xs text-center font-medium leading-relaxed">Please upload your reading passage PDF first to start building questions.</p>
+               <div class="flex flex-col items-center justify-center h-full text-slate-600 bg-gradient-to-b from-slate-50 to-white rounded-2xl border border-slate-200 shadow-md p-10 relative">
+                 <div class="absolute inset-0 bg-gradient-to-tr from-emerald-50/20 via-transparent to-transparent rounded-2xl opacity-50"></div>
+                 <div class="relative z-10 flex flex-col items-center">
+                   <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-50 flex items-center justify-center mb-6 border border-emerald-200/50 shadow-sm">
+                     <svg class="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                   </div>
+                   <p class="font-bold text-xl text-slate-800">Upload PDF First</p>
+                   <p class="text-sm mt-3 text-slate-600 max-w-xs text-center leading-relaxed">Upload your reading passage on the left panel, then return here to create and manage your questions.</p>
+                   <div class="mt-6 pt-6 border-t border-slate-200 w-full">
+                     <p class="text-xs text-slate-500 font-medium uppercase tracking-widest mb-2">What You'll Do</p>
+                     <ul class="text-sm text-slate-600 space-y-1.5">
+                       <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Create question blocks</li>
+                       <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Set correct answers</li>
+                       <li class="flex items-center gap-2"><span class="text-emerald-600 font-bold">✓</span> Publish to library</li>
+                     </ul>
+                   </div>
+                 </div>
                </div>
             `;
             return;
