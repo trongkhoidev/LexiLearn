@@ -86,34 +86,6 @@ export function renderLogin(container) {
               </p>
             </div>
           </div>
-
-          <!-- Demo Selector -->
-          ${!isSignup ? `
-            <div class="demo-section">
-              <span class="demo-label">Quick Access Demo</span>
-              <div class="demo-chips">
-                <button class="demo-chip" data-email="lexilearn.admin@gmail.com" data-pass="Admin123!">
-                  <div class="demo-icon teacher">T</div>
-                  <div class="demo-info">
-                    <div class="demo-name">Teacher Dashboard</div>
-                    <div class="demo-email">lexilearn.admin@gmail.com</div>
-                  </div>
-                </button>
-                <button class="demo-chip" data-email="lexilearn.student@gmail.com" data-pass="Student123!">
-                  <div class="demo-icon student">S</div>
-                  <div class="demo-info">
-                    <div class="demo-name">Student Profile</div>
-                    <div class="demo-email">lexilearn.student@gmail.com</div>
-                  </div>
-                </button>
-              </div>
-              <div class="mt-4 pt-4 border-t border-slate-100">
-                <button id="dev-bypass-teacher" class="btn btn-ghost w-full justify-center text-xs font-bold text-slate-400 hover:text-blue-600">
-                  ⚡ Dev Bypass: Enter as Teacher (Skip Auth)
-                </button>
-              </div>
-            </div>
-          ` : ''}
         </div>
       </div>
     `;
@@ -129,6 +101,19 @@ export function renderLogin(container) {
     const toggleModeBtn = container.querySelector('#toggle-auth-mode');
     const togglePassBtn = container.querySelector('#toggle-password');
     const passInput = container.querySelector('#auth-password');
+    const emailInput = container.querySelector('#auth-email');
+    const passwordInput = container.querySelector('#auth-password');
+
+    // Clear error when user starts typing
+    const clearError = () => {
+      errorEl.classList.add('hidden');
+      errorEl.style.background = '';
+      errorEl.style.borderColor = '';
+      errorEl.style.color = '';
+    };
+
+    emailInput?.addEventListener('input', clearError);
+    passwordInput?.addEventListener('input', clearError);
 
     // Toggle Password Visibility
     togglePassBtn?.addEventListener('click', () => {
@@ -142,31 +127,8 @@ export function renderLogin(container) {
     // Toggle Mode (Login/Signup)
     toggleModeBtn?.addEventListener('click', () => {
       isSignup = !isSignup;
+      clearError();
       render();
-    });
-
-    // Demo Chips
-    container.querySelectorAll('.demo-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        container.querySelector('#auth-email').value = chip.dataset.email;
-        container.querySelector('#auth-password').value = chip.dataset.pass;
-        // Optionally auto-submit
-        form.requestSubmit();
-      });
-    });
-
-    // Dev Bypass
-    container.querySelector('#dev-bypass-teacher')?.addEventListener('click', () => {
-       const devUser = {
-         id: 'dev-teacher-id',
-         email: 'dev@teacher.com',
-         full_name: 'Dev Teacher (Bypass)',
-         role: 'teacher'
-       };
-       localStorage.setItem('lexilearn_user', JSON.stringify(devUser));
-       document.cookie = 'lexilearn_token=mock.token.bypass; Path=/; Max-Age=3600';
-       document.body.classList.remove('auth-view');
-       window.location.reload();
     });
 
     // Handle Submit
@@ -185,9 +147,8 @@ export function renderLogin(container) {
           const fullName = container.querySelector('#auth-name').value.trim();
           const role = container.querySelector('#auth-role').value;
           const result = await signUp(email, password, fullName, role);
-          // After signup, inform user accordingly
-          isSignup = false;
-          render();
+          
+          // Show success message
           if (result.pendingConfirmation) {
             errorText.textContent = "Account created! Please check your email to confirm, then sign in.";
           } else {
@@ -197,6 +158,12 @@ export function renderLogin(container) {
           errorEl.style.background = '#f0fdf4';
           errorEl.style.borderColor = '#dcfce7';
           errorEl.style.color = '#16a34a';
+          
+          // After a short delay, switch to login mode
+          setTimeout(() => {
+            isSignup = false;
+            render();
+          }, 2000);
         } else {
           await signIn(email, password);
           document.body.classList.remove('auth-view');
@@ -209,7 +176,7 @@ export function renderLogin(container) {
         errorEl.style.borderColor = '#fee2e2';
         errorEl.style.color = '#dc2626';
         submitBtn.disabled = false;
-        submitBtn.textContent = isSignup ? 'Create Account' : 'Sign In';
+        submitBtn.innerHTML = isSignup ? 'Create Account' : 'Sign In';
       }
     });
   };

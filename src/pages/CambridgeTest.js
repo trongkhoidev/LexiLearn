@@ -211,161 +211,192 @@ export function renderCambridgeTest(container) {
         .cam-skill-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 44px;
-          max-width: 960px;
+          gap: 24px;
+          max-width: 1100px;
           margin: 0 auto;
           padding-top: 12px;
         }
         @media (min-width: 768px) {
           .cam-skill-grid {
             grid-template-columns: 1fr 1fr;
+            gap: 32px;
           }
         }
         .cam-skill-tag {
           background: #ffffff;
-          border: 2px solid rgba(2, 6, 23, 0.85);
-          border-radius: 26px;
-          transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-          min-height: 170px;
+          border: 2px solid rgba(2, 6, 23, 0.15);
+          border-radius: 20px;
+          transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms ease, border-color 200ms ease, background 200ms ease;
+          min-height: 220px;
           display: grid;
           place-items: center;
           text-align: center;
-          padding: 28px 24px;
+          padding: 40px 28px;
+          cursor: pointer;
         }
         .cam-skill-tag .cam-skill-icon {
-          width: 44px;
-          height: 44px;
-          border-radius: 999px;
+          width: 64px;
+          height: 64px;
+          border-radius: 16px;
           display: grid;
           place-items: center;
-          font-size: 20px;
+          font-size: 32px;
           font-weight: 900;
-          margin: 0 auto 12px;
+          margin: 0 auto 20px;
+          transition: transform 200ms ease;
         }
-        .cam-skill-tag[data-skill="reading"] { border-color: rgba(37, 99, 235, 0.75); }
-        .cam-skill-tag[data-skill="listening"] { border-color: rgba(124, 58, 237, 0.75); }
-        .cam-skill-tag[data-skill="speaking"] { border-color: rgba(5, 150, 105, 0.75); }
-        .cam-skill-tag[data-skill="writing"] { border-color: rgba(217, 119, 6, 0.75); }
-        .cam-skill-tag[data-skill="reading"] .cam-skill-icon { background: rgba(37, 99, 235, 0.10); color: rgba(37, 99, 235, 1); }
-        .cam-skill-tag[data-skill="listening"] .cam-skill-icon { background: rgba(124, 58, 237, 0.10); color: rgba(124, 58, 237, 1); }
-        .cam-skill-tag[data-skill="speaking"] .cam-skill-icon { background: rgba(5, 150, 105, 0.10); color: rgba(5, 150, 105, 1); }
-        .cam-skill-tag[data-skill="writing"] .cam-skill-icon { background: rgba(217, 119, 6, 0.12); color: rgba(217, 119, 6, 1); }
+        .cam-skill-tag[data-skill="reading"] { border-color: rgba(37, 99, 235, 0.3); }
+        .cam-skill-tag[data-skill="listening"] { border-color: rgba(124, 58, 237, 0.3); }
+        .cam-skill-tag[data-skill="speaking"] { border-color: rgba(5, 150, 105, 0.3); }
+        .cam-skill-tag[data-skill="writing"] { border-color: rgba(217, 119, 6, 0.3); }
+        
+        .cam-skill-tag[data-skill="reading"] .cam-skill-icon { background: rgba(37, 99, 235, 0.12); color: #2563eb; }
+        .cam-skill-tag[data-skill="listening"] .cam-skill-icon { background: rgba(124, 58, 237, 0.12); color: #7c3aed; }
+        .cam-skill-tag[data-skill="speaking"] .cam-skill-icon { background: rgba(5, 150, 105, 0.12); color: #059669; }
+        .cam-skill-tag[data-skill="writing"] .cam-skill-icon { background: rgba(217, 119, 6, 0.12); color: #d97706; }
+        
+        .cam-skill-tag[data-skill="reading"]:hover { border-color: #2563eb; box-shadow: 0 16px 40px -12px rgba(37, 99, 235, 0.25); }
+        .cam-skill-tag[data-skill="listening"]:hover { border-color: #7c3aed; box-shadow: 0 16px 40px -12px rgba(124, 58, 237, 0.25); }
+        .cam-skill-tag[data-skill="speaking"]:hover { border-color: #059669; box-shadow: 0 16px 40px -12px rgba(5, 150, 105, 0.25); }
+        .cam-skill-tag[data-skill="writing"]:hover { border-color: #d97706; box-shadow: 0 16px 40px -12px rgba(217, 119, 6, 0.25); }
+        
         .cam-skill-tag:focus-visible {
-          outline: 3px solid rgba(37, 99, 235, 0.35);
-          outline-offset: 6px;
+          outline: none;
+          ring: 3px;
+          ring-color: currentColor;
         }
         .cam-skill-tag:hover {
-          transform: translateY(-3px);
-          border-color: rgba(2, 6, 23, 1);
-          box-shadow: 0 18px 44px -28px rgba(2, 6, 23, 0.55);
+          transform: translateY(-4px);
         }
         .cam-skill-tag:active {
-          transform: translateY(-1px);
+          transform: translateY(-2px);
         }
         .cam-skill-title {
-          font-size: 22px;
+          font-size: 24px;
           font-weight: 900;
-          letter-spacing: -0.02em;
-          color: rgba(2, 6, 23, 0.92);
+          letter-spacing: -0.015em;
+          color: #0f172a;
+          line-height: 1.2;
         }
         .cam-skill-subtitle {
-          margin-top: 10px;
+          margin-top: 12px;
           font-size: 12px;
-          font-weight: 800;
-          letter-spacing: 0.14em;
+          font-weight: 700;
+          letter-spacing: 0.18em;
           text-transform: uppercase;
-          color: rgba(2, 6, 23, 0.45);
+          color: #64748b;
         }
         .cam-tag-chip {
-          border: 1px solid rgba(15, 23, 42, 0.12);
-          background: rgba(15, 23, 42, 0.03);
-          border-radius: 999px;
-          padding: 6px 10px;
+          border: 1.5px solid #cbd5e1;
+          background: #f1f5f9;
+          border-radius: 12px;
+          padding: 6px 12px;
           font-size: 11px;
-          font-weight: 900;
-          letter-spacing: 0.12em;
+          font-weight: 700;
+          letter-spacing: 0.15em;
           text-transform: uppercase;
-          color: rgba(15, 23, 42, 0.65);
+          color: #475569;
           white-space: nowrap;
+          transition: all 160ms ease;
+        }
+        .cam-tag-chip:hover {
+          border-color: #94a3b8;
+          background: #e2e8f0;
         }
         .cam-step-pill {
-          border-radius: 999px;
-          padding: 8px 12px;
-          font-weight: 900;
-          font-size: 11px;
-          letter-spacing: 0.12em;
+          border-radius: 12px;
+          padding: 10px 16px;
+          font-weight: 700;
+          font-size: 12px;
+          letter-spacing: 0.15em;
           text-transform: uppercase;
-          border: 1px solid rgba(15, 23, 42, 0.12);
-          color: rgba(15, 23, 42, 0.7);
+          border: 1.5px solid #e2e8f0;
+          color: #64748b;
           background: white;
+          transition: all 160ms ease;
+          cursor: pointer;
+        }
+        .cam-step-pill:hover {
+          border-color: #cbd5e1;
+          background: #f8fafc;
         }
         .cam-step-pill.active {
           background: #0f172a;
-          color: white;
+          color: #ffffff;
           border-color: #0f172a;
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
         }
         .cam-format-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 18px;
+          gap: 20px;
         }
         @media (min-width: 900px) {
           .cam-format-grid {
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
           }
         }
         .cam-format-tile {
-          border-radius: 22px;
-          border: 2px solid rgba(15, 23, 42, 0.18);
+          border-radius: 16px;
+          border: 2px solid #e2e8f0;
           background: #ffffff;
-          padding: 20px 22px;
-          min-height: 140px;
+          padding: 24px;
+          min-height: 180px;
           display: flex;
           flex-direction: column;
           justify-content: center;
-          gap: 10px;
+          gap: 12px;
           cursor: pointer;
-          transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+          transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
         }
         .cam-format-tile:hover {
-          border-color: rgba(15, 23, 42, 0.6);
-          box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.45);
-          transform: translateY(-2px);
+          border-color: #cbd5e1;
+          box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+          transform: translateY(-3px);
+          background: #f8fafc;
         }
         .cam-format-tile.selected {
           border-color: #0f172a;
           background: #0f172a;
           color: #e5e7eb;
+          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.2);
+          transform: translateY(-2px);
         }
         .cam-format-tile.selected .cam-format-title {
-          color: #f9fafb;
+          color: #ffffff;
         }
         .cam-format-title {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 900;
           text-align: center;
+          letter-spacing: -0.01em;
+          color: #0f172a;
+          line-height: 1.2;
         }
         .cam-format-meta {
           font-size: 11px;
           text-transform: uppercase;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.14em;
           text-align: center;
-          font-weight: 800;
-          color: rgba(15, 23, 42, 0.5);
+          font-weight: 700;
+          color: #94a3b8;
+          margin-top: 4px;
         }
         .cam-format-tile.selected .cam-format-meta {
-          color: rgba(226, 232, 240, 0.9);
+          color: #cbd5e1;
         }
         .cam-format-example {
-          font-size: 11px;
-          line-height: 1.5;
+          font-size: 13px;
+          line-height: 1.6;
           text-align: center;
-          color: rgba(15, 23, 42, 0.75);
+          color: #64748b;
           max-width: 36rem;
-          margin: 0 auto;
+          margin: 0 auto 0;
         }
         .cam-format-tile.selected .cam-format-example {
-          color: rgba(226, 232, 240, 0.9);
+          color: #cbd5e1;
         }
       `;
       document.head.appendChild(style);
