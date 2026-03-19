@@ -35,6 +35,7 @@ export const db = {
   classroomMembers: classroomService.members,
   materialFolders: classroomService.materials.folders,
   materials: classroomService.materials.items,
+  materialClassrooms: classroomService.materialClassrooms,
   assignments: classroomService.assignments,
   assignmentTargets: {
     listByAssignment: (id) => classroomService.assignments.listTargets(id), // Not strictly in service yet but bridgeable
@@ -66,6 +67,8 @@ export const db = {
   },
   readings: vocabularyService.readings,
   dictionary: userService.dictionary
+  ,
+  sharedDesks: userService.sharedDesks
 };
 
 // Helper for IELTS band calculation (moved from old supabase.js)

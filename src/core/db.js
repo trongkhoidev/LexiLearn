@@ -4,6 +4,8 @@
    Low-level wrappers for Supabase REST API.
 */
 
+import { getCookie } from '../utils/helpers.js';
+
 export const SUPABASE_URL =
   localStorage.getItem('lexilearn_supabase_url') ||
   'https://itxflxgbcbrwetagtosu.supabase.co';
@@ -25,7 +27,7 @@ export function isDbConfigured() {
  * Get the current session token
  */
 export function getSessionToken() {
-  return localStorage.getItem('lexilearn_token');
+  return getCookie('lexilearn_token');
 }
 
 /**
@@ -34,7 +36,7 @@ export function getSessionToken() {
 export async function supabaseFetch(table, options = {}) {
   if (!isDbConfigured()) return [];
 
-  const { select = '*', filters = {}, order = '', limit = null } = options;
+  const { select = '*', filters = {}, order = '', limit = null, offset = null } = options;
   let url = `${SUPABASE_URL}/rest/v1/${table}?select=${select}`;
 
   // Apply filters
@@ -65,6 +67,7 @@ export async function supabaseFetch(table, options = {}) {
 
   if (order) url += `&order=${order}`;
   if (limit) url += `&limit=${limit}`;
+  if (offset !== null && offset !== undefined) url += `&offset=${offset}`;
 
   const token = getSessionToken();
 
@@ -143,4 +146,72 @@ export async function supabaseDelete(table, id, matchKey = 'id') {
     const err = await res.json();
     throw new Error(err.message || `Failed to delete from ${table}`);
   }
+}
+
+/**
+ * Generic delete wrapper with multiple filters
+ */
+export async function supabaseDeleteWhere(table, filters = {}) {
+  if (!isDbConfigured()) return;
+
+  let url = `${SUPABASE_URL}/rest/v1/${table}?`;
+  const token = getSessionToken();
+
+  const parts = [];
+  Object.entries(filters).forEach(([key, val]) => {
+    if (val === null) parts.push(`${key}=is.null`);
+    else if (typeof val === 'string' && (
+      val.startsWith('eq.') ||
+      val.startsWith('lte.') ||
+      val.startsWith('gte.') ||
+      val.startsWith('is.') ||
+      val.startsWith('in.') ||
+      val.startsWith('or.') ||
+      val.startsWith('and.')
+    )) parts.push(`${key}=${val}`);
+    else parts.push(`${key}=eq.${val}`);
+  });
+
+  url += parts.join('&');
+
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${token || SUPABASE_KEY}`
+    }
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || `Failed to delete from ${table}`);
+  }
+}
+
+/**
+ * Generic storage upload wrapper
+ */
+export async function supabaseUpload(bucket, path, fileBlob) {
+  if (!isDbConfigured()) throw new Error('Database not configured');
+
+  const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`;
+  const token = getSessionToken();
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${token || SUPABASE_KEY}`,
+      'Content-Type': fileBlob.type || 'application/octet-stream',
+      'x-upsert': 'true'
+    },
+    body: fileBlob
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.message || `Failed to upload to ${bucket}`);
+  }
+
+  return response.json();
 }

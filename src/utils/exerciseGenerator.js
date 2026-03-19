@@ -1,10 +1,11 @@
 /* ============================================
-   LexiLearn — IELTS Exercise Generator
+   LexiLearn — IELTS Exercise Generator (Refactored)
    ============================================
-   Uses Gemini AI to generate structured IELTS questions from text.
+   Routes exercise generation through ai-gateway.service.js.
+   Primary: Groq (speed) | Backup: DeepSeek
 */
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+import { callAI } from '../services/ai-gateway.service.js';
 
 /**
  * Generate IELTS exercises from a passage
@@ -13,9 +14,6 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/
  * @returns {Promise<Object>} Structured questions
  */
 export async function generateExercises(passage, band = '7.0') {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) throw new Error('Gemini API key is required for exercise generation.');
-
   const prompt = `
     Passage: "${passage.substring(0, 4000)}"
 
@@ -46,7 +44,7 @@ export async function generateExercises(passage, band = '7.0') {
           "id": 4,
           "type": "tfng",
           "text": "The statement text...",
-          "answer": "TRUE", // or FALSE or NOT GIVEN
+          "answer": "TRUE",
           "explanation": "Explanation..."
         },
         {
@@ -60,38 +58,7 @@ export async function generateExercises(passage, band = '7.0') {
         }
       ]
     }
-
-    Return ONLY the JSON. No markdown.
   `;
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { 
-        response_mime_type: 'application/json',
-        temperature: 0.7 
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error?.message || 'Failed to generate exercises');
-  }
-
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('AI returned an empty response');
-
-  return JSON.parse(text);
-}
-
-function getGeminiApiKey() {
-  try {
-    const settings = JSON.parse(localStorage.getItem('lexilearn_settings') || '{}');
-    if (settings.geminiApiKey) return settings.geminiApiKey;
-  } catch { /* ignore */ }
-  return 'AIzaSyDv5yQ04GH5gqZqIjYGUoSHuHBn-i5O-0M';
+  return await callAI('exercise_gen', prompt, { temperature: 0.7 });
 }

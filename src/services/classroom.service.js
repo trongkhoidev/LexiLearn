@@ -4,7 +4,7 @@
    Handles classrooms, assignments, and students.
 */
 
-import { supabaseFetch, supabaseSave, supabaseDelete } from '../core/db.js';
+import { supabaseFetch, supabaseSave, supabaseDelete, supabaseDeleteWhere } from '../core/db.js';
 import { getCurrentUser } from '../core/auth.js';
 
 export const classroomService = {
@@ -64,6 +64,23 @@ export const classroomService = {
         created_at: new Date().toISOString()
       }),
       update: (id, data) => supabaseSave('materials', { ...data, id, updated_at: new Date().toISOString() }, true),
+    }
+  },
+
+  materialClassrooms: {
+    listByMaterial: (materialId) =>
+      supabaseFetch('material_classrooms', { filters: { material_id: materialId }, order: 'created_at.asc' }),
+    createMany: (rows) => Promise.all((rows || []).map(r => supabaseSave('material_classrooms', r))),
+    setForMaterial: async (materialId, classroomIds) => {
+      const desired = new Set((classroomIds || []).map(String));
+      const existing = await supabaseFetch('material_classrooms', { filters: { material_id: materialId } }).catch(() => []);
+
+      const toDelete = (existing || []).filter(r => !desired.has(String(r.classroom_id)));
+      await Promise.all(toDelete.map(r => supabaseDeleteWhere('material_classrooms', { material_id: `eq.${materialId}`, classroom_id: `eq.${r.classroom_id}` })));
+
+      const toUpsert = [...desired].map(classroom_id => ({ material_id: materialId, classroom_id }));
+      await Promise.all(toUpsert.map(r => supabaseSave('material_classrooms', r)));
+      return toUpsert;
     }
   },
 

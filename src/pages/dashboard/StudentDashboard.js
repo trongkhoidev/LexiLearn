@@ -140,8 +140,8 @@ export function renderStudentDashboard(container, user, words, dueWords, studied
             </button>
             <button class="flex flex-col items-center justify-center p-6 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-100 transition-all hover-lift" onclick="navigateTo('/settings')">
               <div style="color: #666; margin-bottom: 12px;">${renderIcon('settings', 28)}</div>
-              <div class="text-xs font-black uppercase tracking-widest text-gray-600">Settings</div>
-              <div class="text-[10px] text-gray-400 mt-1">Profile & Preferences</div>
+              <div class="text-xs font-black uppercase tracking-widest text-gray-600">Profile</div>
+              <div class="text-[10px] text-gray-400 mt-1">Account & Progress</div>
             </button>
           </div>
         </div>

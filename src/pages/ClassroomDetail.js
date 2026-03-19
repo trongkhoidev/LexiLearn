@@ -4,6 +4,7 @@ import { navigateTo } from '../router.js';
 import { openCambridgePicker } from '../components/CambridgePicker.js';
 import { showModal } from '../components/Modal.js';
 import { debounce } from '../utils/helpers.js';
+import { exerciseService } from '../services/exercise.service.js';
 
 export async function renderClassroomDetail(container, params) {
   const classroomId = params.id;
@@ -99,7 +100,13 @@ export async function renderClassroomDetail(container, params) {
               <td class="p-4"><span class="badge ${m.status === 'active' ? 'badge-green' : 'badge-yellow'} text-xxs">${m.status}</span></td>
               ${isTeacher ? `
                 <td class="p-4">
-                  <button class="btn btn-ghost btn-xs text-red-500 remove-student-btn" data-membership-id="${m.id}" data-name="${m.profile?.full_name}">Remove</button>
+                  <div class="flex items-center gap-2 justify-end">
+                    <button class="btn btn-secondary btn-xs warn-student-btn" data-student-id="${m.student_id}" data-name="${m.profile?.full_name || 'Student'}">Warn</button>
+                    ${m.status === 'active'
+                      ? `<button class="btn btn-ghost btn-xs text-red-500 deactivate-student-btn" data-membership-id="${m.id}" data-name="${m.profile?.full_name || 'Student'}">Deactivate</button>`
+                      : `<button class="btn btn-ghost btn-xs text-green-600 reactivate-student-btn" data-membership-id="${m.id}" data-name="${m.profile?.full_name || 'Student'}">Re-activate</button>`
+                    }
+                  </div>
                 </td>
               ` : ''}
             </tr>
@@ -112,6 +119,7 @@ export async function renderClassroomDetail(container, params) {
   const renderAssignmentsTab = (assignments, submissions) => `
     <div class="flex justify-end gap-3 mb-6">
        ${isTeacher ? `
+          <button class="btn btn-secondary btn-sm" id="add-exam-assignment-btn">Assign Custom Exam</button>
           <button class="btn btn-secondary btn-sm" id="add-cambridge-assignment-btn">Assign Cambridge Test</button>
           <button class="btn btn-primary btn-sm" id="add-assignment-btn">+ New Assignment</button>
        ` : ''}
@@ -280,63 +288,125 @@ export async function renderClassroomDetail(container, params) {
             <label class="form-label">Search Student Name or Email</label>
             <input type="text" id="student-search-input" class="input" placeholder="Enter name or email..." autofocus>
           </div>
-          <div id="student-search-results" class="space-y-2 mt-4 max-h-60 overflow-y-auto">
-            <p class="text-center text-muted py-4">Type to search for students...</p>
+          <div class="flex items-center justify-between text-xxs text-muted">
+            <span>Showing student accounts (role=student)</span>
+            <button class="btn btn-ghost btn-xs" id="refresh-student-list-btn">Refresh</button>
+          </div>
+          <div id="student-search-results" class="space-y-2 mt-4 max-h-72 overflow-y-auto">
+            <div class="flex justify-center p-4"><div class="spinner-sm"></div></div>
           </div>
         </div>
       `);
 
       const searchInput = document.getElementById('student-search-input');
       const resultsContainer = document.getElementById('student-search-results');
+      const refreshBtn = document.getElementById('refresh-student-list-btn');
+
+      const membershipByStudentId = new Map(members.map(m => [m.student_id, m]));
+
+      const renderRows = (profiles) => {
+        resultsContainer.innerHTML = profiles.map(p => {
+          const membership = membershipByStudentId.get(p.id);
+          const status = membership?.status || 'not_in_class';
+          const badgeClass =
+            status === 'active' ? 'badge-green' :
+            status === 'inactive' ? 'badge-yellow' :
+            'badge-outline';
+
+          const actionHtml =
+            status === 'active'
+              ? `<button class="btn btn-ghost btn-xs" disabled>Active</button>`
+              : status === 'inactive'
+                ? `<button class="btn btn-primary btn-xs enroll-reactivate-btn" data-membership-id="${membership.id}" data-id="${p.id}" data-name="${escapeHtml(p.full_name || 'Student')}">Re-activate</button>`
+                : `<button class="btn btn-primary btn-xs enroll-add-btn" data-id="${p.id}" data-name="${escapeHtml(p.full_name || 'Student')}">Add</button>`;
+
+          return `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+              <div>
+                <div class="flex items-center gap-2">
+                  <div class="font-bold text-sm">${escapeHtml(p.full_name || 'Student')}</div>
+                  <span class="badge ${badgeClass} text-xxs">${status}</span>
+                </div>
+                <div class="text-xs text-muted">${escapeHtml(p.email || '')}</div>
+              </div>
+              <div class="flex items-center gap-2">
+                ${actionHtml}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        resultsContainer.querySelectorAll('.enroll-add-btn').forEach(el => {
+          el.addEventListener('click', async () => {
+            const studentId = el.dataset.id;
+            const studentName = el.dataset.name;
+            try {
+              await db.classroomMembers.addStudent({
+                classroom_id: classroom.id,
+                student_id: studentId
+              });
+              showToast(`Added ${studentName} to class`, 'success');
+              modal.close();
+              render();
+            } catch (err) {
+              showToast(err.message || 'Failed to add student', 'error');
+            }
+          });
+        });
+
+        resultsContainer.querySelectorAll('.enroll-reactivate-btn').forEach(el => {
+          el.addEventListener('click', async () => {
+            const membershipId = el.dataset.membershipId;
+            const studentName = el.dataset.name;
+            try {
+              await db.classroomMembers.updateStatus(membershipId, 'active');
+              showToast(`Re-activated ${studentName}`, 'success');
+              modal.close();
+              render();
+            } catch (err) {
+              showToast(err.message || 'Failed to re-activate student', 'error');
+            }
+          });
+        });
+      };
+
+      const loadAllStudents = async () => {
+        resultsContainer.innerHTML = '<div class="flex justify-center p-4"><div class="spinner-sm"></div></div>';
+        try {
+          const profiles = await db.profiles.listStudents({ limit: 100 });
+          if (!profiles || profiles.length === 0) {
+            resultsContainer.innerHTML = '<p class="text-center text-muted py-4">No student accounts found.</p>';
+            return;
+          }
+          renderRows(profiles);
+        } catch (err) {
+          resultsContainer.innerHTML = `<p class="text-center text-red-500 py-4">${escapeHtml(err.message)}</p>`;
+        }
+      };
 
       const handleSearch = debounce(async (query) => {
-        if (query.length < 2) {
-          resultsContainer.innerHTML = '<p class="text-center text-muted py-4">Type to search for students...</p>';
-          return;
-        }
+        if (query.length < 2) return loadAllStudents();
 
         resultsContainer.innerHTML = '<div class="flex justify-center p-4"><div class="spinner-sm"></div></div>';
-        
+
         try {
           const profiles = await db.profiles.search(query);
           if (profiles.length === 0) {
             resultsContainer.innerHTML = '<p class="text-center text-muted py-4">No students found.</p>';
             return;
           }
-
-          resultsContainer.innerHTML = profiles.map(p => `
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer add-this-student" data-id="${p.id}" data-name="${p.full_name}">
-              <div>
-                <div class="font-bold text-sm">${p.full_name}</div>
-                <div class="text-xs text-muted">${p.email}</div>
-              </div>
-              <button class="btn btn-primary btn-xs">Add</button>
-            </div>
-          `).join('');
-
-          resultsContainer.querySelectorAll('.add-this-student').forEach(el => {
-            el.addEventListener('click', async () => {
-              const studentId = el.dataset.id;
-              const studentName = el.dataset.name;
-              try {
-                await db.classroomMembers.addStudent({
-                  classroom_id: classroom.id,
-                  student_id: studentId
-                });
-                showToast(`Added ${studentName} to class`, 'success');
-                modal.close();
-                render();
-              } catch (err) {
-                showToast(err.message || 'Failed to add student', 'error');
-              }
-            });
-          });
+          renderRows(profiles);
         } catch (err) {
-          resultsContainer.innerHTML = `<p class="text-center text-red-500 py-4">${err.message}</p>`;
+          resultsContainer.innerHTML = `<p class="text-center text-red-500 py-4">${escapeHtml(err.message)}</p>`;
         }
       }, 300);
 
       searchInput.addEventListener('input', (e) => handleSearch(e.target.value));
+      refreshBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        loadAllStudents();
+      });
+      loadAllStudents();
     });
 
     // 2. New Assignment
@@ -422,26 +492,136 @@ export async function renderClassroomDetail(container, params) {
         }
       });
     });
+    
+    // 3.5 Assign Custom Exam
+    document.getElementById('add-exam-assignment-btn')?.addEventListener('click', async () => {
+      const modal = showModal('Select Exam to Assign', `
+        <div class="space-y-4">
+          <div id="exam-select-list" class="max-h-72 overflow-y-auto space-y-2">
+            <div class="flex justify-center p-4"><div class="spinner-sm"></div></div>
+          </div>
+        </div>
+      `);
 
-    // 4. Remove student
-    container.querySelectorAll('.remove-student-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!confirm(`Remove ${btn.dataset.name}?`)) return;
-        try {
-          // Note: In a real system you'd have a db.classroomMembers.remove function
-          // and you'd call it here. For now, assuming it exists or using supabaseFetch.
-          await fetch(`${localStorage.getItem('lexilearn_supabase_url')}/rest/v1/classroom_members?id=eq.${btn.dataset.membershipId}`, {
-            method: 'DELETE',
-            headers: { 
-               'apikey': localStorage.getItem('lexilearn_supabase_key'), 
-               'Authorization': `Bearer ${localStorage.getItem('lexilearn_supabase_key')}` 
+      try {
+        const exams = await exerciseService.listExams({ teacher_id: `eq.${user.id}` });
+        const list = document.getElementById('exam-select-list');
+        if (!exams || exams.length === 0) {
+          list.innerHTML = `<p class="text-center text-muted py-4">No published exams found. Create one in the Exam Library first.</p>`;
+          return;
+        }
+
+        list.innerHTML = exams.map(e => `
+          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer select-exam-row" data-id="${e.id}" data-title="${escapeHtml(e.title)}" data-module="${e.module}">
+            <div>
+              <div class="font-bold text-sm">${escapeHtml(e.title)}</div>
+              <div class="text-xxs text-muted uppercase font-black">${e.module}</div>
+            </div>
+            <button class="btn btn-primary btn-xs">Select</button>
+          </div>
+        `).join('');
+
+        list.querySelectorAll('.select-exam-row').forEach(row => {
+          row.addEventListener('click', async () => {
+            const examId = row.dataset.id;
+            const title = row.dataset.title;
+            const module = row.dataset.module;
+            modal.close();
+
+            try {
+              const rows = await db.assignments.create({
+                classroom_id: classroom.id,
+                teacher_id: classroom.teacher_id,
+                title: `[Exam] ${title}`,
+                module: module,
+                task_type: 'custom_exam',
+                source_type: 'exam',
+                source_ref_id: examId,
+                status: 'published'
+              });
+              
+              const assignment = rows[0];
+              if (members.length > 0 && assignment?.id) {
+                const targets = members.map(m => ({
+                  assignment_id: assignment.id,
+                  classroom_id: classroom.id,
+                  student_id: m.student_id,
+                  required: true
+                }));
+                await db.assignmentTargets.createMany(targets);
+              }
+              showToast('Exam assigned successfully', 'success');
+              render();
+            } catch (err) {
+              showToast(err.message, 'error');
             }
           });
-          showToast('Student removed', 'success');
+        });
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // 4. Member status actions (soft, RLS-friendly)
+    container.querySelectorAll('.deactivate-student-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Deactivate ${btn.dataset.name}?`)) return;
+        try {
+          await db.classroomMembers.updateStatus(btn.dataset.membershipId, 'inactive');
+          showToast('Student deactivated', 'success');
           render();
         } catch (err) {
           showToast(err.message, 'error');
         }
+      });
+    });
+
+    container.querySelectorAll('.reactivate-student-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try {
+          await db.classroomMembers.updateStatus(btn.dataset.membershipId, 'active');
+          showToast('Student re-activated', 'success');
+          render();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    // 5. Warn student (notification)
+    container.querySelectorAll('.warn-student-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const studentId = btn.dataset.studentId;
+        const name = btn.dataset.name;
+        const warnModal = showModal(`Warn ${escapeHtml(name)}`, `
+          <div class="space-y-4">
+            <div class="input-group">
+              <label class="form-label">Message</label>
+              <textarea id="warn-msg" class="input w-full p-4 h-28" placeholder="Write a warning or reminder..."></textarea>
+            </div>
+            <div class="flex justify-end gap-2">
+              <button class="btn btn-ghost" id="warn-cancel">Cancel</button>
+              <button class="btn btn-primary" id="warn-send">Send Warning</button>
+            </div>
+          </div>
+        `);
+
+        document.getElementById('warn-cancel')?.addEventListener('click', () => warnModal.close());
+        document.getElementById('warn-send')?.addEventListener('click', async () => {
+          const msg = document.getElementById('warn-msg')?.value?.trim();
+          if (!msg) return;
+          try {
+            await db.notifications.create({
+              user_id: studentId,
+              title: `⚠️ Warning from ${classroom.title}`,
+              body: msg
+            });
+            showToast('Warning sent', 'success');
+            warnModal.close();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
       });
     });
   };

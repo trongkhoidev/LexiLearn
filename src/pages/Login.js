@@ -107,6 +107,11 @@ export function renderLogin(container) {
                   </div>
                 </button>
               </div>
+              <div class="mt-4 pt-4 border-t border-slate-100">
+                <button id="dev-bypass-teacher" class="btn btn-ghost w-full justify-center text-xs font-bold text-slate-400 hover:text-blue-600">
+                  ⚡ Dev Bypass: Enter as Teacher (Skip Auth)
+                </button>
+              </div>
             </div>
           ` : ''}
         </div>
@@ -148,6 +153,20 @@ export function renderLogin(container) {
         // Optionally auto-submit
         form.requestSubmit();
       });
+    });
+
+    // Dev Bypass
+    container.querySelector('#dev-bypass-teacher')?.addEventListener('click', () => {
+       const devUser = {
+         id: 'dev-teacher-id',
+         email: 'dev@teacher.com',
+         full_name: 'Dev Teacher (Bypass)',
+         role: 'teacher'
+       };
+       localStorage.setItem('lexilearn_user', JSON.stringify(devUser));
+       document.cookie = 'lexilearn_token=mock.token.bypass; Path=/; Max-Age=3600';
+       document.body.classList.remove('auth-view');
+       window.location.reload();
     });
 
     // Handle Submit

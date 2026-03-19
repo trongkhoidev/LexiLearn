@@ -21,9 +21,20 @@ export async function renderPersonalDesk(container) {
   `;
 
   try {
-    const desks = await (db.desks?.listByUser ? db.desks.listByUser(user.id) : Promise.resolve([]));
-    const desk = desks[0] || { title: 'My Study Desk', id: 'default' };
-    const items = await (db.deskItems?.listByDesk && desk.id !== 'default' ? db.deskItems.listByDesk(desk.id) : Promise.resolve([]));
+    let desks = await (db.desks?.listByUser ? db.desks.listByUser(user.id) : Promise.resolve([]));
+    let desk = desks[0];
+
+    // Enforce: each student has exactly one personal desk (auto-create if missing)
+    if (!desk) {
+      const created = await db.desks.create({
+        student_id: user.id,
+        title: 'My Personal Desk'
+      });
+      desk = created?.[0];
+      desks = desk ? [desk] : [];
+    }
+
+    const items = await (db.deskItems?.listByDesk && desk?.id ? db.deskItems.listByDesk(desk.id) : Promise.resolve([]));
 
     container.innerHTML = `
       <div class="animate-fade-in-up" style="max-width:1040px;margin:0 auto;">
@@ -50,14 +61,14 @@ export async function renderPersonalDesk(container) {
             <div class="card p-6 card-interactive desk-item" data-id="${item.id}">
               <div class="flex justify-between items-start mb-4">
                 <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
-                  ${item.type === 'vocabulary' ? '📖' : '📄'}
+                  ${item.item_type === 'vocabulary' ? '📖' : '📄'}
                 </div>
                 <button class="text-muted hover:text-red-500 delete-item-btn" data-id="${item.id}">✕</button>
               </div>
               <h3 class="font-bold text-sm mb-1">${escapeHtml(item.title || 'Untitled Item')}</h3>
               <p class="text-xs text-muted line-clamp-2">${escapeHtml(item.content || '')}</p>
               <div class="mt-4 pt-4 border-t flex justify-between items-center">
-                <span class="badge badge-outline text-xxs">${item.type}</span>
+                <span class="badge badge-outline text-xxs">${escapeHtml(item.item_type || 'material')}</span>
                 <span class="text-xxs text-muted">${new Date(item.created_at).toLocaleDateString()}</span>
               </div>
             </div>
@@ -72,13 +83,13 @@ export async function renderPersonalDesk(container) {
       </div>
     `;
 
-    setupEvents(container, user.id);
+    setupEvents(container, user.id, desk?.id);
   } catch (err) {
     container.innerHTML = `<div class="p-12 text-center text-red-500">Error: ${err.message}</div>`;
   }
 }
 
-function setupEvents(container, userId) {
+function setupEvents(container, userId, deskId) {
   container.querySelector('#add-item-card')?.addEventListener('click', () => {
     document.getElementById('add-desk-item-btn')?.click();
   });
@@ -87,14 +98,14 @@ function setupEvents(container, userId) {
     const title = prompt('Item Title:');
     if (!title) return;
     const content = prompt('Content / URL:');
-    const type = prompt('Type (vocabulary/material):', 'material') || 'material';
+    const item_type = prompt('Type (vocabulary/material):', 'material') || 'material';
 
     try {
       await db.deskItems.create({
-        student_id: userId,
+        desk_id: deskId,
         title,
         content,
-        type,
+        item_type,
         created_at: new Date().toISOString()
       });
       showToast('Item saved to your desk!', 'success');

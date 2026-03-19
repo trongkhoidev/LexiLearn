@@ -114,10 +114,11 @@ export async function renderStudentAssignments(container) {
 
     function handleStart(assignmentId, sourceType, sourceRefId) {
       if (sourceType === 'cambridge_library') {
-        // Navigate to test player with assignment context
         navigateTo(`/test/${sourceRefId}?assignmentId=${assignmentId}`);
+      } else if (sourceType === 'exam') {
+        navigateTo(`/exam/take/${sourceRefId}/${assignmentId}`);
       } else {
-        showToast('Only Cambridge tests assignments are playable for now.', 'info');
+        showToast('Only Cambridge tests or custom exams are playable for now.', 'info');
       }
     }
 

@@ -1,5 +1,7 @@
 import { db, getCurrentUser } from '../utils/supabase.js';
 import { showToast } from '../components/Toast.js';
+import { showModal } from '../components/Modal.js';
+import { escapeHtml } from '../utils/helpers.js';
 
 export async function renderMaterialsManager(container) {
   const user = getCurrentUser();
@@ -10,6 +12,7 @@ export async function renderMaterialsManager(container) {
 
   let currentFolderId = null;
   let breadcrumbs = [];
+  let teacherClasses = [];
 
   async function refresh() {
     container.innerHTML = `
@@ -19,6 +22,7 @@ export async function renderMaterialsManager(container) {
     `;
 
     try {
+      teacherClasses = await db.classrooms.listByTeacher(user.id).catch(() => []);
       const [folders, materials] = await Promise.all([
         currentFolderId ? db.materialFolders.listChildren(currentFolderId) : db.materialFolders.listRootForTeacher(user.id),
         currentFolderId ? db.materials.listByFolder(currentFolderId) : Promise.resolve([])
@@ -135,26 +139,94 @@ export async function renderMaterialsManager(container) {
     });
 
     container.querySelector('#new-material-btn')?.addEventListener('click', async () => {
-      const title = prompt('Material title:');
-      if (!title) return;
-      const url = prompt('URL or Content link:');
-      if (!url) return;
+      const modal = showModal('Add Material', `
+        <form id="add-material-form" class="space-y-4">
+          <div class="input-group">
+            <label class="form-label">Title *</label>
+            <input class="input" id="mat-title" placeholder="e.g. Reading TFNG strategies" required autofocus />
+          </div>
+          <div class="input-group">
+            <label class="form-label">Attachment URL *</label>
+            <input class="input" id="mat-url" placeholder="https://..." required />
+          </div>
+          <div class="grid grid-2 gap-4">
+            <div class="input-group">
+              <label class="form-label">Type</label>
+              <select class="input" id="mat-type">
+                <option value="link">Link</option>
+                <option value="pdf">PDF</option>
+                <option value="audio">Audio</option>
+                <option value="video">Video</option>
+                <option value="image">Image</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label class="form-label">Skill</label>
+              <select class="input" id="mat-skill">
+                <option value="mixed">Mixed</option>
+                <option value="reading">Reading</option>
+                <option value="listening">Listening</option>
+                <option value="writing">Writing</option>
+                <option value="speaking">Speaking</option>
+                <option value="vocab">Vocabulary</option>
+                <option value="grammar">Grammar</option>
+              </select>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="form-label">Share to classrooms</label>
+            <div class="grid grid-2 gap-2 max-h-52 overflow-auto p-3 bg-gray-50 rounded-lg border">
+              ${teacherClasses.map(c => `
+                <label class="flex items-center gap-2 text-xs">
+                  <input type="checkbox" class="mat-class" value="${c.id}" />
+                  <span class="font-bold">${escapeHtml(c.title)}</span>
+                  <span class="text-muted">Band ${c.level_band_min}-${c.level_band_max}</span>
+                </label>
+              `).join('')}
+              ${teacherClasses.length === 0 ? `<div class="text-xs text-muted italic">Create a classroom first.</div>` : ''}
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" class="btn btn-ghost" id="mat-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      `);
 
-      try {
-        await db.materials.create({
-          folder_id: currentFolderId,
-          teacher_id: user.id,
-          title,
-          attachment_url: url,
-          attachment_type: 'link',
-          visibility_scope: 'classroom',
-          skill: 'mixed'
-        });
-        showToast('Material added', 'success');
-        refresh();
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
+      document.getElementById('mat-cancel')?.addEventListener('click', () => modal.close());
+      document.getElementById('add-material-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('mat-title')?.value?.trim();
+        const url = document.getElementById('mat-url')?.value?.trim();
+        const attachment_type = document.getElementById('mat-type')?.value || 'link';
+        const skill = document.getElementById('mat-skill')?.value || 'mixed';
+        const classroomIds = [...document.querySelectorAll('.mat-class:checked')].map(x => x.value);
+        if (!title || !url) return;
+
+        try {
+          const created = await db.materials.create({
+            folder_id: currentFolderId,
+            teacher_id: user.id,
+            title,
+            attachment_url: url,
+            attachment_type,
+            visibility_scope: classroomIds.length > 0 ? 'classroom' : 'private',
+            skill
+          });
+          const material = created?.[0];
+          if (material?.id && classroomIds.length > 0) {
+            await (db.materialClassrooms.setForMaterial
+              ? db.materialClassrooms.setForMaterial(material.id, classroomIds)
+              : db.materialClassrooms.createMany(classroomIds.map(classroom_id => ({ material_id: material.id, classroom_id })))
+            );
+          }
+          showToast('Material added', 'success');
+          modal.close();
+          refresh();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
     });
   }
 

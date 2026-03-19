@@ -14,7 +14,6 @@ import { renderDashboard } from './pages/dashboard/DashboardPage.js';
 import { renderDeckList } from './pages/DeckList.js';
 import { renderDeckDetail } from './pages/DeckDetail.js';
 import { renderStudy } from './pages/study/StudyPage.js';
-import { renderSearch } from './pages/Search.js';
 import { renderReadingPractice } from './pages/ReadingPractice.js';
 import { renderCambridgeTest } from './pages/CambridgeTest.js';
 import { renderTestPlayer } from './pages/TestPlayer.js';
@@ -28,15 +27,22 @@ import { renderPersonalDesk } from './pages/PersonalDesk.js';
 import { renderGradingHub } from './pages/GradingHub.js';
 import { renderStats } from './pages/Stats.js';
 import { renderSettings } from './pages/Settings.js';
+import { renderSharedDeskManager } from './pages/SharedDeskManager.js';
+import { renderTopics } from './pages/Topics.js';
+import { renderTopRightBar } from './components/TopRightBar.js';
+import { renderExamList } from './pages/ExamList.js';
+import { renderExamBuilder } from './pages/ExamBuilder.js';
+import { renderExamPlayer } from './pages/ExamPlayer.js';
+import { renderExamResults } from './pages/ExamResults.js';
+import { renderPerformanceAnalytics } from './pages/PerformanceAnalytics.js';
 
 // Register routes
 registerRoute('/dashboard', (main) => { renderDashboard(main); });
 registerRoute('/decks', (main) => { renderDeckList(main); });
 registerRoute('/deck/:slug', (main, params) => { renderDeckDetail(main, params); });
 registerRoute('/study/:slug', (main, params) => { renderStudy(main, params); });
-registerRoute('/search', (main) => { renderSearch(main); });
-registerRoute('/reading', (main) => { renderReadingPractice(main); });
-registerRoute('/cambridge', (main) => { renderCambridgeTest(main); });
+registerRoute('/reading', (main) => { renderReadingPractice(main); }, { role: 'student' });
+registerRoute('/cambridge', (main) => { renderCambridgeTest(main); }, { role: 'teacher' });
 registerRoute('/test/:id', (main, params) => { renderTestPlayer(main, params); });
 
 // Teacher-only routes
@@ -45,10 +51,19 @@ registerRoute('/classes/new', (main) => { renderNewClassroom(main); }, { role: '
 registerRoute('/class/:id', (main, params) => { renderClassroomDetail(main, params); }, { role: 'teacher' });
 registerRoute('/materials', (main) => { renderMaterialsManager(main); }, { role: 'teacher' });
 registerRoute('/grading-hub', (main) => { renderGradingHub(main); }, { role: 'teacher' });
+registerRoute('/shared-desk', (main) => { renderSharedDeskManager(main); }, { role: 'teacher' });
+registerRoute('/exams', (main) => { renderExamList(main); }, { role: 'teacher' });
+registerRoute('/exam/new', (main, params) => { renderExamBuilder(main, params); }, { role: 'teacher' });
+registerRoute('/exam/builder/:id', (main, params) => { renderExamBuilder(main, params); }, { role: 'teacher' });
 
 // Student-only routes
 registerRoute('/my-assignments', (main) => { renderStudentAssignments(main); }, { role: 'student' });
 registerRoute('/personal-desk', (main) => { renderPersonalDesk(main); }, { role: 'student' });
+registerRoute('/topics', (main) => { renderTopics(main); }, { role: 'student' });
+registerRoute('/exam/take/:id', (main, params) => { renderExamPlayer(main, params); }, { role: 'student' });
+registerRoute('/exam/take/:id/:assignmentId', (main, params) => { renderExamPlayer(main, params); }, { role: 'student' });
+registerRoute('/exam/results/:id', (main, params) => { renderExamResults(main, params); }, { role: 'student' });
+registerRoute('/analytics', (main) => { renderPerformanceAnalytics(main); }, { role: 'student' });
 
 registerRoute('/assignment/:id', (main, params) => { renderAssignmentDetail(main, params); });
 registerRoute('/stats', (main) => { renderStats(main); });
@@ -57,10 +72,12 @@ registerRoute('/settings', (main) => { renderSettings(main); });
 // Re-render sidebar on route change to update active states and counts
 window.addEventListener('hashchange', () => {
   renderSidebar();
+  renderTopRightBar();
 });
 
 // Initial render
 renderSidebar();
+renderTopRightBar();
 startRouter();
 
 // If no hash, go to dashboard

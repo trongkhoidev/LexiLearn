@@ -324,11 +324,28 @@ img {
 }
 
 /* ---- Responsive ---- */
-@media (max-width: 768px) {
+@media print {
+    #sidebar, .btn, .badge-outline, .text-xxs, header, footer {
+        display: none !important;
+    }
     #main-content {
-        margin-left: 0;
-        padding: var(--space-4);
-        max-width: 100vw;
-        padding-top: 72px;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    .card {
+        border: 1px solid #eee !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+    body {
+        background: white !important;
+        font-size: 12pt;
+    }
+    h1 { font-size: 24pt; }
+    .ai-feedback {
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
+        padding: 20px !important;
     }
 }

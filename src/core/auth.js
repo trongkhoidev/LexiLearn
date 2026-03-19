@@ -5,6 +5,7 @@
 */
 
 import { supabaseFetch, supabaseSave, SUPABASE_URL, SUPABASE_KEY } from './db.js';
+import { setCookie, getCookie, eraseCookie } from '../utils/helpers.js';
 
 /**
  * Get current logged in user
@@ -23,7 +24,7 @@ export function getCurrentUser() {
  * Get current token
  */
 export function getSession() {
-  return localStorage.getItem('lexilearn_token');
+  return getCookie('lexilearn_token');
 }
 
 /**
@@ -45,7 +46,7 @@ export async function signIn(email, password) {
   const userId = data.user.id;
   const token = data.access_token;
   
-  localStorage.setItem('lexilearn_token', token);
+  setCookie('lexilearn_token', token, 7);
 
   try {
     const profiles = await supabaseFetch('profiles', { filters: { id: userId } });
@@ -79,7 +80,7 @@ export async function signIn(email, password) {
     
     return userData;
   } catch (err) {
-    localStorage.removeItem('lexilearn_token');
+    eraseCookie('lexilearn_token');
     throw err;
   }
 }
@@ -130,5 +131,5 @@ export async function signOut() {
   }
   localStorage.removeItem('lexilearn_user');
   localStorage.removeItem('lexilearn_session');
-  localStorage.removeItem('lexilearn_token');
+  eraseCookie('lexilearn_token');
 }

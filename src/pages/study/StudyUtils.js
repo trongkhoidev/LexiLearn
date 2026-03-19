@@ -4,7 +4,7 @@
 */
 
 import { escapeHtml } from '../../utils/helpers.js';
-import { GEMINI_API_URL } from '../../utils/gemini.js';
+import { callAI } from '../../services/ai-gateway.service.js';
 
 export function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -30,23 +30,11 @@ export async function fetchUsageAnalysis(word, sentence, targetSelector) {
   const el = document.querySelector(targetSelector);
   if (!el || !sentence?.trim()) return;
   try {
-    const settings = JSON.parse(localStorage.getItem('lexilearn_settings') || '{}');
-    const keys = settings.apiKeys || [{ name: 'Default', key: 'AIzaSyDv5yQ04GH5gqZqIjYGUoSHuHBn-i5O-0M' }];
-    const apiKey = settings.selectedApiKey || keys[0].key;
-    
-    const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `Word: "${word}". Example: "${sentence}". In one short Vietnamese sentence, explain how "${word}" is used in this example. Reply with only that explanation, no quotes or preamble.` }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 150 }
-      })
-    });
-    if (!res.ok) throw new Error(res.status);
-    const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const prompt = `Word: "${word}". Example: "${sentence}". In one short Vietnamese sentence, explain how "${word}" is used in this example. Reply with only that explanation, no quotes or preamble.`;
+    const text = await callAI('tooltip', prompt, { jsonMode: false, temperature: 0.2 });
+
     if (text && document.querySelector(targetSelector)) {
-      document.querySelector(targetSelector).innerHTML = escapeHtml(text).replace(/&lt;br&gt;/g, '<br>');
+      document.querySelector(targetSelector).innerHTML = escapeHtml(typeof text === 'string' ? text.trim() : '').replace(/&lt;br&gt;/g, '<br>');
       document.querySelector(targetSelector).classList.remove('animate-pulse');
     }
   } catch {

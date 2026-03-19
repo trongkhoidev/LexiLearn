@@ -46,7 +46,9 @@ export async function renderGradingHub(container) {
         category: 'reading',
         studentName: s.student_id?.substring(0, 8) || 'Student',
         title: assignmentMap[s.assignment_id]?.title || 'Assignment',
-        band_score: s.score_band_equivalent
+        band_score: s.score_band_equivalent,
+        classroom_id: assignmentMap[s.assignment_id]?.classroom_id || null,
+        classroom_title: assignmentMap[s.assignment_id]?.classroom_id ? (classrooms.find(c => c.id === assignmentMap[s.assignment_id]?.classroom_id)?.title || '') : ''
       })),
       ...writing.map(s => ({ ...s, category: 'writing', studentName: s.submissions?.profiles?.full_name || 'Student' })),
       ...speaking.map(s => ({ ...s, category: 'speaking', studentName: s.submissions?.profiles?.full_name || 'Student' }))
@@ -58,7 +60,55 @@ export async function renderGradingHub(container) {
       return !s.feedback_overall;
     };
 
-    container.innerHTML = `
+    // Filter state (client-side)
+    const state = {
+      classroomId: 'all',
+      module: 'all',
+      status: 'all',
+      days: '30'
+    };
+
+    const withinDays = (dateStr, days) => {
+      if (!days) return true;
+      const d = new Date(dateStr);
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - Number(days));
+      return d >= cutoff;
+    };
+
+    const applyFilters = () => {
+      return allSubmissions.filter(s => {
+        if (state.module !== 'all' && s.category !== state.module) return false;
+        if (state.status === 'pending' && !isPending(s)) return false;
+        if (state.status === 'graded' && isPending(s)) return false;
+        if (state.classroomId !== 'all') {
+          // Only reading submissions are classroom-linked currently
+          if (`${s.classroom_id}` !== `${state.classroomId}`) return false;
+        }
+        if (!withinDays(s.created_at, state.days)) return false;
+        return true;
+      });
+    };
+
+    const computeLeaderboard = (rows) => {
+      const counts = new Map();
+      rows.forEach(r => {
+        const key = r.student_id || r.studentName || 'unknown';
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+      const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+      return {
+        mostActive: sorted[0] ? { key: sorted[0][0], count: sorted[0][1] } : null,
+        leastActive: sorted.length > 0 ? { key: sorted[sorted.length - 1][0], count: sorted[sorted.length - 1][1] } : null
+      };
+    };
+
+    const render = () => {
+      const rows = applyFilters();
+      const lb = computeLeaderboard(rows);
+      const pendingCount = rows.filter(isPending).length;
+
+      container.innerHTML = `
       <div class="animate-fade-in-up" style="max-width:1140px;margin:0 auto;">
         <div class="page-header mb-8">
           <div class="flex items-center justify-between">
@@ -67,13 +117,64 @@ export async function renderGradingHub(container) {
               <p class="text-muted">Review and evaluate student performance across all skills.</p>
             </div>
             <div class="flex gap-2">
-               <div class="badge badge-outline">Total: ${allSubmissions.length}</div>
-               <div class="badge badge-yellow">Pending: ${allSubmissions.filter(isPending).length}</div>
+               <div class="badge badge-outline">Total: ${rows.length}</div>
+               <div class="badge badge-yellow">Pending: ${pendingCount}</div>
             </div>
           </div>
         </div>
 
         <div class="grid grid-cols-1 gap-6">
+          <div class="card p-6">
+            <div class="grid grid-4 gap-4">
+              <div class="input-group">
+                <label class="form-label">Classroom</label>
+                <select class="input" id="gh-classroom">
+                  <option value="all">All</option>
+                  ${classrooms.map(c => `<option value="${c.id}">${escapeHtml(c.title)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="input-group">
+                <label class="form-label">Module</label>
+                <select class="input" id="gh-module">
+                  <option value="all">All</option>
+                  <option value="reading">Reading</option>
+                  <option value="writing">Writing</option>
+                  <option value="speaking">Speaking</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label class="form-label">Status</label>
+                <select class="input" id="gh-status">
+                  <option value="all">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="graded">Graded</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label class="form-label">Time window</label>
+                <select class="input" id="gh-days">
+                  <option value="7">Last 7 days</option>
+                  <option value="30" selected>Last 30 days</option>
+                  <option value="90">Last 90 days</option>
+                  <option value="">All time</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-2 gap-4 mt-4">
+              <div class="p-4 bg-gray-50 rounded-xl">
+                <div class="text-xxs font-black text-muted uppercase tracking-widest mb-1">Most active</div>
+                <div class="font-bold">${lb.mostActive ? escapeHtml(lb.mostActive.key).slice(0, 18) : '-'}</div>
+                <div class="text-xxs text-muted">${lb.mostActive ? `${lb.mostActive.count} submissions` : ''}</div>
+              </div>
+              <div class="p-4 bg-gray-50 rounded-xl">
+                <div class="text-xxs font-black text-muted uppercase tracking-widest mb-1">Least active</div>
+                <div class="font-bold">${lb.leastActive ? escapeHtml(lb.leastActive.key).slice(0, 18) : '-'}</div>
+                <div class="text-xxs text-muted">${lb.leastActive ? `${lb.leastActive.count} submissions` : ''}</div>
+              </div>
+            </div>
+            <div class="text-xxs text-muted mt-3 italic">Activity is computed from submissions in the selected time window.</div>
+          </div>
+
           <div class="card p-0 overflow-hidden">
             <table class="w-full text-left text-sm">
               <thead class="bg-gray-50 border-b text-xxs font-black text-muted uppercase tracking-wider">
@@ -87,9 +188,9 @@ export async function renderGradingHub(container) {
                 </tr>
               </thead>
               <tbody class="divide-y">
-                ${allSubmissions.length === 0 ? `
+                ${rows.length === 0 ? `
                   <tr><td colspan="6" class="p-20 text-center text-muted italic">No submissions found to grade.</td></tr>
-                ` : allSubmissions.map(s => `
+                ` : rows.map(s => `
                   <tr class="hover:bg-gray-50 transition-colors">
                     <td class="p-4">
                       <div class="font-bold">${escapeHtml(s.studentName)}</div>
@@ -98,6 +199,7 @@ export async function renderGradingHub(container) {
                     <td class="p-4">
                       <div class="flex items-center gap-2 mb-1">
                         <span class="badge ${getCategoryBadge(s.category)} text-xxs uppercase">${s.category}</span>
+                        ${s.classroom_title ? `<span class="badge badge-outline text-xxs">${escapeHtml(s.classroom_title)}</span>` : ''}
                       </div>
                       <div class="font-medium text-xs truncate max-w-xs">${escapeHtml(s.title || 'Practice Submission')}</div>
                     </td>
@@ -133,6 +235,24 @@ export async function renderGradingHub(container) {
     }
 
     setupEvents(container);
+
+      // Bind filter controls
+      const cSel = document.getElementById('gh-classroom');
+      const mSel = document.getElementById('gh-module');
+      const sSel = document.getElementById('gh-status');
+      const dSel = document.getElementById('gh-days');
+      if (cSel) cSel.value = state.classroomId;
+      if (mSel) mSel.value = state.module;
+      if (sSel) sSel.value = state.status;
+      if (dSel) dSel.value = state.days;
+
+      cSel?.addEventListener('change', () => { state.classroomId = cSel.value; render(); });
+      mSel?.addEventListener('change', () => { state.module = mSel.value; render(); });
+      sSel?.addEventListener('change', () => { state.status = sSel.value; render(); });
+      dSel?.addEventListener('change', () => { state.days = dSel.value; render(); });
+    };
+
+    render();
 
   } catch (err) {
     container.innerHTML = `<div class="p-12 text-center text-red-500">Error: ${err.message}</div>`;

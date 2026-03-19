@@ -73,7 +73,11 @@ export function renderTestPlayer(container, params) {
       renderLayout();
     } catch (err) {
       container.innerHTML = `<div class="card" style="padding:2rem;text-align:center;"><h3>${err.message}</h3><p class="mt-2 text-muted">Ensure you have correctly assigned the Cambridge material.</p><button class="btn btn-primary mt-4" id="go-back-cambridge">Go Back</button></div>`;
-      document.getElementById('go-back-cambridge')?.addEventListener('click', () => navigateTo(assignmentId ? '/my-assignments' : '/cambridge'));
+      document.getElementById('go-back-cambridge')?.addEventListener('click', () => {
+        const role = getCurrentUser()?.role;
+        if (assignmentId) return navigateTo('/my-assignments');
+        return navigateTo(role === 'teacher' ? '/cambridge' : '/dashboard');
+      });
     }
   };
 
@@ -173,14 +177,20 @@ export function renderTestPlayer(container, params) {
         const bandScore = IELTS.estimateBand(correct, total);
         await saveProgress('submitted', bandScore, { correct, total, answerRows });
         showToast(`Test submitted! Estimated Band: ${bandScore} (${correct}/${total})`, 'success');
-        navigateTo(assignmentId ? '/my-assignments' : '/cambridge');
+        {
+          const role = getCurrentUser()?.role;
+          navigateTo(assignmentId ? '/my-assignments' : (role === 'teacher' ? '/cambridge' : '/dashboard'));
+        }
       }
     });
 
     document.getElementById('exit-test')?.addEventListener('click', () => {
       if (confirm('Exit without saving?')) {
         clearInterval(timerInterval);
-        navigateTo(assignmentId ? '/my-assignments' : '/cambridge');
+        {
+          const role = getCurrentUser()?.role;
+          navigateTo(assignmentId ? '/my-assignments' : (role === 'teacher' ? '/cambridge' : '/dashboard'));
+        }
       }
     });
   };
@@ -190,9 +200,17 @@ export function renderTestPlayer(container, params) {
     const area = document.getElementById('passage-content-area');
     if (!area) return;
 
+    let contentHtml = passage.content || 'Content not available';
+    try {
+      const parsed = JSON.parse(passage.content);
+      if (parsed?.pdf?.url) {
+        contentHtml = `<iframe src="${escapeHtml(parsed.pdf.url)}" class="w-full rounded-2xl border border-slate-200 shadow-sm" style="min-height: 80vh;"></iframe>`;
+      }
+    } catch(e) { /* ignore, it's just raw HTML */ }
+
     area.innerHTML = `
       <h2 class="text-3xl font-extra-bold mb-8 tracking-tight">${escapeHtml(passage.title)}</h2>
-      <div class="reading-content-test animate-fade-in">${passage.content || 'Content not available'}</div>
+      <div class="reading-content-test animate-fade-in flex flex-col">${contentHtml}</div>
     `;
 
     renderQuestions(passage.questions || []);
