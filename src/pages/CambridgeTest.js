@@ -914,8 +914,8 @@ export function renderCambridgeTest(container) {
     const renderReadingEditor = (container) => {
       container.innerHTML = `
         <div class="reading-editor-layout flex h-full w-full bg-slate-50 overflow-hidden">
-           <!-- LEFT COLUMN: 60% -->
-           <div class="w-[60%] flex flex-col min-h-0 border-r border-slate-200 shadow-sm relative z-10 bg-slate-50">
+           <!-- LEFT COLUMN: 60% / Full when no PDF -->
+           <div class="flex-1 flex flex-col min-h-0 border-r border-slate-200 shadow-sm relative z-10 bg-slate-50 transition-all ${state.meta?.media?.pdf?.url ? 'w-[60%]' : 'w-full'}">
               <div class="p-6 border-b bg-white border-slate-200 flex justify-between items-center shrink-0" style="border-top: 4px solid #2563eb;">
                  <div class="flex items-center gap-3">
                     <span class="w-3 h-3 rounded-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)]"></span>
@@ -939,18 +939,10 @@ export function renderCambridgeTest(container) {
                  <div id="passage-viewport" class="w-full flex-1 flex flex-col transition-all duration-300 min-h-[85vh]">
                     ${state.meta?.media?.pdf?.url 
                       ? `<iframe src="${state.meta.media.pdf.url}" class="w-full h-full rounded-2xl shadow-xl flex-1 bg-white" style="border: 1px solid #e2e8f0;"></iframe>`
-                      : `<div class="flex flex-col items-center justify-center h-full text-slate-500 bg-white rounded-2xl border border-slate-200 shadow-md p-10 relative overflow-hidden">
-                           <div class="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-transparent opacity-50"></div>
-                           <div class="relative z-10 flex flex-col items-center">
-                             <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center mb-6 border border-blue-200/50 shadow-sm">
-                               <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                             </div>
-                             <p class="font-bold text-xl text-slate-800">Ready to Upload</p>
-                             <p class="text-sm mt-3 text-slate-600 max-w-sm text-center leading-relaxed">Click the <span class="font-semibold">Upload PDF</span> button to import your reading passage. The passage will appear here for review.</p>
-                             <div class="mt-6 pt-6 border-t border-slate-200 w-full">
-                               <p class="text-xs text-slate-500 font-medium uppercase tracking-widest">Supported Format</p>
-                               <p class="text-sm text-slate-600 mt-2 font-medium">PDF documents only (any size)</p>
-                             </div>
+                      : `<div class="flex items-center justify-center h-full">
+                           <div class="flex flex-col items-center gap-3">
+                             <svg class="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                             <p class="text-slate-500 text-sm font-medium uppercase tracking-widest">Upload file</p>
                            </div>
                          </div>`
                     }
@@ -968,7 +960,7 @@ export function renderCambridgeTest(container) {
            </div>
            
            <!-- RIGHT COLUMN: 40% -->
-           <div class="w-[40%] flex flex-col min-h-0 bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.03)] z-20">
+           <div class="w-[40%] flex flex-col min-h-0 bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.03)] z-20 transition-all ${!state.meta?.media?.pdf?.url ? 'hidden' : ''}">
               <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-white shrink-0" style="border-top: 4px solid #059669;">
                  <div class="flex items-center gap-3">
                     <span class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]"></span>
